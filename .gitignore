@@ -1,0 +1,8 @@
+#Editor files
+.vscode
+*.swp
+
+#Raw Data
+*.xml
+*.txt
+*.png
