@@ -1,3 +1,3 @@
-module github.com/go-tmux-plugin-manager
+module source.cyberpi.de/go/teminel
 
 go 1.19
