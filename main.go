@@ -1,21 +1,18 @@
 package main
 
 import (
-	"fmt"
-
-	"source.cyberpi.de/go/teminel/config"
+	"source.cyberpi.de/go/teminel/core/tmux"
 )
 
 func main() {
-	path, err := config.SelectConfig()
+	configTmux := &tmux.Config{}
+	path, err := tmux.SelectConfig()
 	if err != nil {
 		panic(err)
 	}
-	config, err := config.Load(path)
+	err = configTmux.Load(path)
 	if err != nil {
 		panic(err)
 	}
-	for _, plugin := range config.Plugins {
-		fmt.Println(plugin)
-	}
+	configTmux.Report()
 }

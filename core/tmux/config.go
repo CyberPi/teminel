@@ -1,36 +1,44 @@
-package config
+package tmux
 
 import (
 	"bufio"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 
 	"source.cyberpi.de/go/teminel/utils"
 )
 
 type Config struct {
-	RootDir string
-	Plugins []string
+	path    string
+	plugins []string
 }
 
-func Load(path string) (*Config, error) {
+func (tmux *Config) Report() {
+	fmt.Println(tmux.plugins)
+	for _, plugin := range tmux.plugins {
+		fmt.Println("repo:", plugin)
+	}
+}
+
+func (tmux *Config) Load(path string) error {
+	tmux.path = filepath.Dir(path)
 	file, err := os.Open(path)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer file.Close()
 	scanner := bufio.NewScanner(file)
-	matcher := regexp.MustCompile(`set -g @plugin ["']([A-z-/]+)["']`)
-	result := Config{}
+	matcher := regexp.MustCompile(`^#PLUGIN ["'](.+?)["']$`)
 	for scanner.Scan() {
 		line := scanner.Text()
 		match := matcher.FindStringSubmatch(line)
 		if match != nil {
-			result.Plugins = append(result.Plugins, match[1])
+			tmux.plugins = append(tmux.plugins, match[1])
 		}
 	}
-	return &result, nil
+	return nil
 }
 
 func SelectConfig() (string, error) {
@@ -40,12 +48,10 @@ func SelectConfig() (string, error) {
 	}
 	possibilities := []string{
 		".tmux.conf",
-		".tmux/tmux.conf",
 		".config/tmux/tmux.conf",
 	}
 	for _, possibility := range possibilities {
 		toCheck := fmt.Sprintf("%v/%v", homeDir, possibility)
-		fmt.Printf("to check: %v\n", toCheck)
 		if utils.CheckFileExists(toCheck) {
 			return toCheck, nil
 		}
