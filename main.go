@@ -10,9 +10,10 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	err = configTmux.Load(path)
+	err = configTmux.Read(path)
 	if err != nil {
 		panic(err)
 	}
 	configTmux.Report()
+	configTmux.Install()
 }
