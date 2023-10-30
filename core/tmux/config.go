@@ -4,23 +4,17 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
-	"strings"
 
 	"github.com/go-git/go-git/v5"
+	"source.cyberpi.de/go/teminel/exec"
 	"source.cyberpi.de/go/teminel/utils"
 )
 
 type Config struct {
 	path    string
 	plugins []*Plugin
-}
-
-type Plugin struct {
-	path string
-	repo string
 }
 
 func (tmux *Config) Report() {
@@ -65,8 +59,7 @@ func (tmux *Config) Install() error {
 		return err
 	}
 	for _, plugin := range tmux.plugins {
-		pluginName := strings.Split(plugin.path, "/")[1]
-		installPath := filepath.Join(pluginPath, pluginName)
+		installPath := filepath.Join(pluginPath, plugin.Name())
 		_, err := os.Stat(installPath)
 		if os.IsNotExist(err) {
 			fmt.Println("Installing plugin", plugin, "in", installPath)
@@ -89,22 +82,13 @@ func (tmux *Config) Install() error {
 
 func (tmux *Config) Load() error {
 	for _, plugin := range tmux.plugins {
-		pluginName := strings.Split(plugin.path, "/")[1]
-		glob := fmt.Sprintf("%v/plugins/%v/*.tmux", tmux.path, pluginName)
+		glob := fmt.Sprintf("%v/plugins/%v/*.tmux", tmux.path, plugin.Name())
 		toLoad, err := filepath.Glob(glob)
 		if err != nil {
 			return err
 		}
 		for _, item := range toLoad {
-			command := exec.Command("sh", "-c", item)
-			stdout, err := command.Output()
-			if err != nil {
-				return err
-			}
-			fmt.Printf("Load plugin: %v\n", item)
-			for _, line := range stdout {
-				fmt.Println(line)
-			}
+			exec.Shell(item)
 		}
 	}
 	return nil
@@ -120,7 +104,7 @@ func SelectConfig() (string, error) {
 		".config/tmux/tmux.conf",
 	}
 	for _, possibility := range possibilities {
-		toCheck := fmt.Sprintf("%v/%v", homeDir, possibility)
+		toCheck := filepath.Join(homeDir, possibility)
 		if utils.CheckFileExists(toCheck) {
 			return toCheck, nil
 		}
