@@ -14,6 +14,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	configTmux.Report()
 	configTmux.Install()
+	configTmux.Load()
 }

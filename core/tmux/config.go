@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -85,7 +86,29 @@ func (tmux *Config) Install() error {
 		} else if err != nil {
 			return err
 		}
-		fmt.Println("Plugin", pluginName, "installed in", installPath)
+	}
+	return nil
+}
+
+func (tmux *Config) Load() error {
+	for _, plugin := range tmux.plugins {
+		pluginName := strings.Split(plugin.path, "/")[1]
+		glob := fmt.Sprintf("%v/plugins/%v/*.tmux", tmux.path, pluginName)
+		toLoad, err := filepath.Glob(glob)
+		if err != nil {
+			return err
+		}
+		for _, item := range toLoad {
+			command := exec.Command("sh", "-c", item)
+			stdout, err := command.Output()
+			if err != nil {
+				return err
+			}
+			fmt.Printf("Load plugin: %v\n", item)
+			for _, line := range stdout {
+				fmt.Println(line)
+			}
+		}
 	}
 	return nil
 }
