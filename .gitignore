@@ -6,3 +6,6 @@
 *.xml
 *.txt
 *.png
+
+#Build results
+.build

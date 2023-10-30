@@ -14,7 +14,12 @@ import (
 
 type Config struct {
 	path    string
-	plugins []string
+	plugins []*Plugin
+}
+
+type Plugin struct {
+	path string
+	repo string
 }
 
 func (tmux *Config) Report() {
@@ -32,12 +37,19 @@ func (tmux *Config) Read(path string) error {
 	}
 	defer file.Close()
 	scanner := bufio.NewScanner(file)
-	matcher := regexp.MustCompile(`^#PLUGIN ["'](.+?)["']$`)
+	matcher := regexp.MustCompile(`(PLUGIN ["']([\w\/-]+?)["'])|(REPO ["']([\w\/-]+?)["'])`)
 	for scanner.Scan() {
 		line := scanner.Text()
 		match := matcher.FindStringSubmatch(line)
 		if match != nil {
-			tmux.plugins = append(tmux.plugins, match[1])
+			if match[4] == "" {
+				match[4] = "github.com"
+			}
+			toAppend := &Plugin{
+				path: match[2],
+				repo: match[4],
+			}
+			tmux.plugins = append(tmux.plugins, toAppend)
 		}
 	}
 	return nil
@@ -52,13 +64,13 @@ func (tmux *Config) Install() error {
 		return err
 	}
 	for _, plugin := range tmux.plugins {
-		pluginName := strings.Split(plugin, "/")[1]
+		pluginName := strings.Split(plugin.path, "/")[1]
 		installPath := filepath.Join(pluginPath, pluginName)
 		_, err := os.Stat(installPath)
 		if os.IsNotExist(err) {
 			fmt.Println("Installing plugin", plugin, "in", installPath)
 			options := &git.CloneOptions{
-				URL:          fmt.Sprintf("https://github.com/%v.git", plugin),
+				URL:          fmt.Sprintf("https://%v/%v.git", plugin.repo, plugin.path),
 				RemoteName:   "origin",
 				SingleBranch: true,
 				Mirror:       false,
