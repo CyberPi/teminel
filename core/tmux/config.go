@@ -72,10 +72,7 @@ func (tmux *Config) Install() error {
 			fmt.Println("Installing plugin", plugin, "in", installPath)
 			options := &git.CloneOptions{
 				URL:          fmt.Sprintf("https://%v/%v.git", plugin.repo, plugin.path),
-				RemoteName:   "origin",
 				SingleBranch: true,
-				Mirror:       false,
-				NoCheckout:   false,
 				Depth:        1,
 				Tags:         git.NoTags,
 			}
