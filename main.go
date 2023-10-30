@@ -5,15 +5,8 @@ import (
 )
 
 func main() {
-	configTmux := &tmux.Config{}
-	path, err := tmux.SelectConfig()
+	err := tmux.Run()
 	if err != nil {
 		panic(err)
 	}
-	err = configTmux.Read(path)
-	if err != nil {
-		panic(err)
-	}
-	configTmux.Install()
-	configTmux.Load()
 }
