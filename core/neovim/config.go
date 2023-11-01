@@ -1,3 +1,3 @@
 package neovim
 
-// nvim --headlessi -c "echo stdpath('data')|q"
+// nvim --headless -c "echo stdpath('data')|q"
