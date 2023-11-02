@@ -2,27 +2,18 @@ package neovim
 
 import (
 	"net/http"
-	"os"
 
 	"github.com/sosedoff/gitkit"
+	"source.cyberpi.de/go/teminel/utils"
 )
 
 const mirrorDir = "/tmp/teminel/mirror/repos"
 
 func Run() error {
-	_, err := os.Stat(mirrorDir)
-	if os.IsNotExist(err) {
-		os.MkdirAll(mirrorDir, os.FileMode(0755))
-	} else if err != nil {
+	err := utils.EnsureDirectories(mirrorDir, loaderDir)
+	if err != nil {
 		return err
 	}
-	_, err = os.Stat(loaderDir)
-	if os.IsNotExist(err) {
-		os.MkdirAll(loaderDir, os.FileMode(0755))
-	} else if err != nil {
-		return err
-	}
-
 	hooks := &gitkit.HookScripts{
 		PreReceive: `echo "This is just a mirror. You should notpush here!"`,
 	}

@@ -17,19 +17,24 @@ type Loader struct {
 }
 
 func (cache *Loader) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
-	fmt.Println("Host:", request.Host, "URL:", request.URL)
-	matcher := regexp.MustCompile(`(^.+?)\.git.*$`)
-	matches := matcher.FindStringSubmatch(request.URL.String())
-	fmt.Println("Matches:", matches)
-	http.Error(writer, "Could not read item", http.StatusNotFound)
-	options := &git.CloneOptions{
-		URL:          fmt.Sprintf("https://%v%v.git", "github.com", matches[1]),
-		SingleBranch: true,
-		Depth:        1,
-		Tags:         git.NoTags,
+	if request.Method == http.MethodGet {
+		fmt.Println("Host:", request.Host, "URL:", request.URL)
+		matcher := regexp.MustCompile(`(^.+?)\.git.*$`)
+		matches := matcher.FindStringSubmatch(request.URL.String())
+		fmt.Println("Matches:", matches)
+		http.Error(writer, "Could not read item", http.StatusNotFound)
+		options := &git.CloneOptions{
+			URL:          fmt.Sprintf("https://%v%v.git", "github.com", matches[1]),
+			SingleBranch: true,
+			Depth:        1,
+			Tags:         git.NoTags,
+		}
+		repository, err := git.PlainClone(filepath.Join(loaderDir, matches[1]), false, options)
+		if err != nil {
+			fmt.Println(err)
+		}
+		repository.DeleteRemote("origin")
+		repository.CreateRemote()
 	}
-	_, err := git.PlainClone(filepath.Join(loaderDir, matches[1]), false, options)
-	if err != nil {
-		fmt.Println(err)
-	}
+	cache.server.ServeHTTP(writer, request)
 }

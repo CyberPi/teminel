@@ -6,9 +6,21 @@ import (
 	"strings"
 )
 
-func CheckFileExists(path string) bool {
+func CheckPathExists(path string) bool {
 	_, err := os.Stat(path)
 	return !os.IsNotExist(err)
+}
+
+func EnsureDirectories(paths ...string) error {
+	for _, path := range paths {
+		if !CheckPathExists(path) {
+			err := os.MkdirAll(path, os.FileMode(0755))
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func ParsePath(path string) (string, error) {
