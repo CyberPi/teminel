@@ -14,14 +14,9 @@ func Run() error {
 	if err != nil {
 		return err
 	}
-	hooks := &gitkit.HookScripts{
-		PreReceive: `echo "This is just a mirror. You should notpush here!"`,
-	}
 	config := gitkit.Config{
 		Dir:        mirrorDir,
 		AutoCreate: true,
-		AutoHooks:  true,
-		Hooks:      hooks,
 	}
 	middleware := gitkit.New(config)
 	if err := middleware.Setup(); err != nil {
@@ -29,6 +24,7 @@ func Run() error {
 	}
 	loader := &Loader{
 		server: middleware,
+		loaded: make(map[string]bool),
 	}
 	http.Handle("/", loader)
 
