@@ -34,7 +34,7 @@ func (cache *Loader) ServeHTTP(writer http.ResponseWriter, request *http.Request
 			fmt.Println(err)
 		}
 		repository.DeleteRemote("origin")
-		repository.CreateRemote()
+		repository.CreateRemote("origin", "http://localhost:9980")
 	}
 	cache.server.ServeHTTP(writer, request)
 }
