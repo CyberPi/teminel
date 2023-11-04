@@ -24,7 +24,6 @@ func Run() error {
 	}
 	loader := &Loader{
 		server: middleware,
-		loaded: make(map[string]bool),
 	}
 	http.Handle("/", loader)
 

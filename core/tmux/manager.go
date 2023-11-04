@@ -40,7 +40,7 @@ func SelectConfig() (string, error) {
 	}
 	for _, possibility := range possibilities {
 		toCheck := filepath.Join(homeDir, possibility)
-		if utils.CheckPathExists(toCheck) {
+		if utils.VerifyPath(toCheck) {
 			return toCheck, nil
 		}
 	}

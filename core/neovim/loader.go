@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-git/go-git/v5"
 	"github.com/sosedoff/gitkit"
+	"source.cyberpi.de/go/teminel/utils"
 )
 
 const loaderDir = "/tmp/teminel/loader"
@@ -23,6 +24,7 @@ func (cache *Loader) ServeHTTP(writer http.ResponseWriter, request *http.Request
 		matcher := regexp.MustCompile(`(^.+?)\.git.*$`)
 		matches := matcher.FindStringSubmatch(request.URL.String())
 		fmt.Println("Matches:", matches)
+		utils.VerifyPath()
 		_, ok := cache.loaded[matches[1]]
 		if !ok {
 			options := &git.CloneOptions{
