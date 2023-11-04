@@ -13,7 +13,7 @@ func VerifyPath(path string) bool {
 
 func EnsureDirectory(path string) error {
 	if !VerifyPath(path) {
-		return os.Mkdir(path, os.FileMode(0755))
+		return os.MkdirAll(path, os.FileMode(0755))
 	}
 	return nil
 }
