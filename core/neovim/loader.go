@@ -23,7 +23,7 @@ func (cache *Loader) ServeHTTP(writer http.ResponseWriter, request *http.Request
 	if request.Method == http.MethodGet {
 		matches := repositoryMatcher.FindStringSubmatch(request.URL.String())
 		repositoryPath := filepath.Join(mirrorDir, matches[1])
-		if utils.VerifyPath(repositoryPath) {
+		if !utils.VerifyPath(repositoryPath) {
 			fmt.Println("Loading repository:", matches[1], "Using git clone from:", request.Host)
 			options := &git.CloneOptions{
 				URL:          fmt.Sprintf("https://%v%v", "github.com", matches[1]),
