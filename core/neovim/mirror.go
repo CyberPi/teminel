@@ -10,7 +10,7 @@ import (
 const mirrorDir = "/tmp/teminel/mirror/repos"
 
 func Run() error {
-	err := utils.EnsureDirectories(mirrorDir, loaderDir)
+	err := utils.EnsureDirectories(mirrorDir)
 	if err != nil {
 		return err
 	}

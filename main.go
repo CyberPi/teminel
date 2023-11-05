@@ -1,20 +1,25 @@
 package main
 
 import (
-	"os"
+	"flag"
 
 	"source.cyberpi.de/go/teminel/core/neovim"
 	"source.cyberpi.de/go/teminel/core/tmux"
 )
 
 func main() {
-	if len(os.Args) == 1 {
-		err := tmux.Run()
-		if err != nil {
-			panic(err)
+	flag.Parse()
+	if len(flag.Args()) == 1 {
+		switch flag.Args()[0] {
+		case "neovim":
+			err := neovim.Run()
+			if err != nil {
+				panic(err)
+			}
+			return
 		}
 	}
-	err := neovim.Run()
+	err := tmux.Run()
 	if err != nil {
 		panic(err)
 	}
