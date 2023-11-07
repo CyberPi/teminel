@@ -8,18 +8,21 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing/object"
 	"source.cyberpi.de/go/teminel/utils"
 )
 
 const loaderDir = "/tmp/teminel/loader"
+const mirrorDir = "/tmp/teminel/mirror"
 
-func CloneBare(hostUrl string, path string, repository string) error {
-	bareRepository := fmt.Sprintf("%v.git", repository)
+func CloneBare(hostUrl string, path string, repositoryName string) error {
+	bareRepository := fmt.Sprintf("%v.git", repositoryName)
 	barePath := filepath.Join(path, bareRepository)
 	if !utils.VerifyPath(barePath) {
-		fmt.Println("Loading repository:", repository, "Using git clone from:", hostUrl)
+		fmt.Println("Loading repository:", repositoryName, "Using git clone from:", hostUrl)
 		options := &git.CloneOptions{
 			URL:          hostUrl + bareRepository,
 			SingleBranch: true,
@@ -29,18 +32,33 @@ func CloneBare(hostUrl string, path string, repository string) error {
 		_, err := git.PlainClone(barePath, true, options)
 		if err != nil {
 			fmt.Println("Try to get archive download due to error:", err)
-			url := fmt.Sprintf("https://github.com/%v/archive/refs/heads/main.tar.gz", repository)
-			repositoryPath := filepath.Join(loaderDir, repository)
+			url := fmt.Sprintf("https://github.com/%v/archive/refs/heads/main.tar.gz", repositoryName)
+			repositoryPath := filepath.Join(loaderDir, repositoryName)
 			err = LoadTarball(url, repositoryPath)
 			if err != nil {
 				return err
 			}
-			_, err = git.PlainInit(repositoryPath, false)
+			repository, err := git.PlainInit(repositoryPath, false)
 			if err != nil {
 				return err
 			}
-			//options.URL = repositoryPath
-			//_, err := git.PlainClone(barePath, true, options)
+			worktree, err := repository.Worktree()
+			if err != nil {
+				return err
+			}
+			err = worktree.AddGlob(".")
+			if err != nil {
+				return err
+			}
+			worktree.Commit("New commit", &git.CommitOptions{
+				Author: &object.Signature{
+					Name:  "Auto Maton",
+					Email: "teminel@cyberpi.de",
+					When:  time.Now(),
+				},
+			})
+			options.URL = repositoryPath
+			_, err = git.PlainClone(barePath, true, options)
 			return err
 		}
 	}
@@ -71,6 +89,10 @@ func Untar(archive io.Reader, path string) error {
 		return err
 	}
 	reader := tar.NewReader(archive)
+	root, err := SeekRoot(reader)
+	if err != nil {
+		return err
+	}
 	for {
 		header, err := reader.Next()
 		if err == io.EOF {
@@ -79,27 +101,54 @@ func Untar(archive io.Reader, path string) error {
 		if err != nil {
 			return err
 		}
-		itemPath := filepath.Join(path, header.Name)
+		itemPath := filepath.Join(path, header.Name[len(root):])
 		fmt.Println("Found item:", itemPath, "with type flag:", header.Typeflag, "and mode:", header.Mode)
 		switch header.Typeflag {
 		case tar.TypeDir:
-			fmt.Println("Creating folder:", itemPath)
-			if err := os.MkdirAll(itemPath, os.FileMode(header.Mode)); err != nil {
+			if err := UntarDir(itemPath, header); err != nil {
 				return err
 			}
 		case tar.TypeReg:
-			fmt.Println("Creating file:", itemPath)
-			file, err := os.Create(itemPath)
-			if err != nil {
+			if err := UntarFile(itemPath, reader, header); err != nil {
 				return err
 			}
-			if err := os.Chmod(itemPath, os.FileMode(header.Mode)); err != nil {
-				return err
-			}
-			if _, err := io.Copy(file, reader); err != nil {
-				return err
-			}
-			file.Close()
 		}
 	}
+}
+
+func SeekRoot(reader *tar.Reader) (string, error) {
+	for {
+		header, err := reader.Next()
+		if err == io.EOF {
+			return "", fmt.Errorf("Tarball does not contain root dir")
+		}
+		if err != nil {
+			return "", err
+		}
+		switch header.Typeflag {
+		case tar.TypeDir:
+			return header.Name, nil
+		}
+	}
+}
+
+func UntarDir(path string, header *tar.Header) error {
+	fmt.Println("Creating folder:", path)
+	return os.MkdirAll(path, os.FileMode(header.Mode))
+}
+
+func UntarFile(path string, reader *tar.Reader, header *tar.Header) error {
+	fmt.Println("Creating file:", path)
+	file, err := os.Create(path)
+	defer file.Close()
+	if err != nil {
+		return err
+	}
+	if err := os.Chmod(path, os.FileMode(header.Mode)); err != nil {
+		return err
+	}
+	if _, err := io.Copy(file, reader); err != nil {
+		return err
+	}
+	return nil
 }
