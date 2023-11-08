@@ -21,6 +21,7 @@ const mirrorDir = "/tmp/teminel/mirror"
 func CloneBare(hostUrl string, path string, repositoryName string) error {
 	bareRepository := fmt.Sprintf("%v.git", repositoryName)
 	barePath := filepath.Join(path, bareRepository)
+	repositoryPath := filepath.Join(loaderDir, repositoryName)
 	if !utils.VerifyPath(barePath) {
 		fmt.Println("Loading repository:", repositoryName, "Using git clone from:", hostUrl)
 		options := &git.CloneOptions{
@@ -33,7 +34,6 @@ func CloneBare(hostUrl string, path string, repositoryName string) error {
 		if err != nil {
 			fmt.Println("Try to get archive download due to error:", err)
 			url := fmt.Sprintf("https://github.com/%v/archive/refs/heads/main.tar.gz", repositoryName)
-			repositoryPath := filepath.Join(loaderDir, repositoryName)
 			err = LoadTarball(url, repositoryPath)
 			if err != nil {
 				return err
