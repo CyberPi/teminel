@@ -7,15 +7,15 @@ import (
 	"source.cyberpi.de/go/teminel/utils"
 )
 
-const mirrorDir = "/tmp/teminel/mirror/repos"
+const bareDirectory = "/tmp/teminel/bare"
 
 func Run() error {
-	err := utils.EnsureDirectories(mirrorDir)
+	err := utils.EnsureDirectories(bareDirectory)
 	if err != nil {
 		return err
 	}
 	config := gitkit.Config{
-		Dir:        mirrorDir,
+		Dir:        bareDirectory,
 		AutoCreate: true,
 	}
 	middleware := gitkit.New(config)

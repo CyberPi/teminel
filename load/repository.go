@@ -2,6 +2,7 @@ package load
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -10,64 +11,108 @@ import (
 	"source.cyberpi.de/go/teminel/utils"
 )
 
-const bareDirectory = "/tmp/teminel/bare"
-const workingDirectory = "/tmp/teminel/working"
+func CloneBare(host string, name string, path string, cache string) error {
+	workingPath := filepath.Join(cache, name)
+	ensureRepository(host, name, cache)
 
-func CloneBare(protocol string, host string, path string, repositoryName string) error {
-	bareRepository := repositoryName + ".git"
+	bareRepository := name + ".git"
 	barePath := filepath.Join(path, bareRepository)
-	workingPath := filepath.Join(workingDirectory, repositoryName)
-	// Check if working copy needs an update
-	if utils.VerifyPath(workingPath) {
-		updateTarballRepo(host, workingDirectory, repositoryName)
+	if utils.VerifyPath(barePath) {
+		os.RemoveAll(barePath)
 	}
+	options := &git.CloneOptions{
+		URL:          workingPath,
+		SingleBranch: true,
+		Depth:        1,
+		Tags:         git.NoTags,
+	}
+	_, err := git.PlainClone(barePath, true, options)
+	return err
+}
 
-	if !utils.VerifyPath(barePath) {
-		fmt.Println("Loading repository:", repositoryName, "Using git clone from:", host)
+func ensureRepository(host string, name string, path string) error {
+	repositoyPath := filepath.Join(path, name)
+	fmt.Println("Ensuring repository:", name, "from host:", host, "on path:", path)
+	if utils.VerifyPath(repositoyPath) {
+		updateRepository(host, name, path)
+	} else {
+		urls := []string{
+			fmt.Sprintf("ssh://git@%v/%v.git", host, name),
+			fmt.Sprintf("https://%v/%v.git", host, name),
+		}
 		options := &git.CloneOptions{
-			URL:          host + bareRepository,
 			SingleBranch: true,
 			Depth:        1,
 			Tags:         git.NoTags,
 		}
-		_, err := git.PlainClone(barePath, true, options)
+		var err error
+		for _, url := range urls {
+			fmt.Println("Trying to clone repo from:", url)
+			options.URL = url
+			_, err = git.PlainClone(repositoyPath, false, options)
+			if err == nil {
+				fmt.Println("Repo cloned using git")
+				break
+			}
+		}
 		if err != nil {
-			fmt.Println("Try to get archive download due to error:", err)
-			repository, err := git.PlainInit(workingPath, false)
-			if err != nil {
-				return err
-			}
-			worktree, err := repository.Worktree()
-			if err != nil {
-				return err
-			}
-			err = worktree.AddGlob(".")
-			if err != nil {
-				return err
-			}
-
-			options.URL = workingPath
-			_, err = git.PlainClone(barePath, true, options)
-			return err
+			fmt.Println("Unable to clone repo using git:", err)
+			ensureTarballRepository(host, name, path)
 		}
 	}
 	return nil
 }
 
-func updateTarballRepo(host string, path string, repositoryName string) error {
-	url := fmt.Sprintf("https://%v/%v/archive/refs/heads/main.tar.gz", host, repositoryName)
-	workingPath := filepath.Join(path, repositoryName)
-	err := LoadTarball(url, workingPath)
-	if err != nil {
-		return err
-	}
+func updateRepository(host string, name string, path string) error {
+	workingPath := filepath.Join(path, name)
 	repository, err := openOrInit(workingPath)
+	remotes, err := repository.Remotes()
 	if err != nil {
-		return err
+		return nil
 	}
-	err = commit(repository)
-	if err != nil {
-		return err
+	if len(remotes) != 0 {
+		worktree, err := repository.Worktree()
+		if err != nil {
+			return err
+		}
+		options := &git.PullOptions{
+			RemoteName: "origin",
+		}
+		err = worktree.Pull(options)
+		if err == git.NoErrAlreadyUpToDate {
+
+		} else if err != nil {
+			return nil
+		}
+	} else {
+		ensureTarballRepository(host, name, path)
+	}
+	return nil
+}
+
+func ensureTarballRepository(host string, name string, path string) error {
+	branches := []string{
+		"main",
+		"master",
+		"develop",
+	}
+	for _, branch := range branches {
+		url := fmt.Sprintf("https://%v/%v/archive/refs/heads/%v.tar.gz", host, name, branch)
+		workingPath := filepath.Join(path, name)
+		err := LoadTarball(url, workingPath)
+		if err != nil {
+			fmt.Println("Tarball failed to load:", err)
+			continue
+		}
+		repository, err := openOrInit(workingPath)
+		if err != nil {
+			return err
+		}
+		err = commit(repository)
+		if err != nil {
+			return err
+		}
+		break
 	}
 	return nil
 }

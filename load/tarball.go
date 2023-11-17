@@ -7,6 +7,9 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
+
+	"source.cyberpi.de/go/teminel/utils"
 )
 
 func LoadTarball(url string, path string) error {
@@ -14,6 +17,9 @@ func LoadTarball(url string, path string) error {
 	response, err := http.Get(url)
 	if err != nil {
 		return err
+	}
+	if response.StatusCode >= 300 || response.StatusCode < 200 {
+		return fmt.Errorf("Error on tarball retrieval: %v", response.Status)
 	}
 	defer response.Body.Close()
 	gzipReader, err := gzip.NewReader(response.Body)
