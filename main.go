@@ -11,9 +11,14 @@ func main() {
 	flag.Parse()
 	if len(flag.Args()) == 1 {
 		switch flag.Args()[0] {
-		case "neovim":
-			err := neovim.Run()
-			if err != nil {
+		case "git":
+			if err := neovim.Run(); err != nil {
+				panic(err)
+			}
+			return
+
+		case "proxy":
+			if err := proxy.Run(); err != nil {
 				panic(err)
 			}
 			return
