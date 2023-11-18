@@ -30,15 +30,23 @@ func CloneBare(host string, name string, path string, cache string) error {
 	return err
 }
 
+func templateUrl(protocol string, host string, name string) string {
+	switch protocol {
+	case "ssh":
+		return fmt.Sprintf("%v://git@%v/%v.git", protocol, host, name)
+	}
+	return fmt.Sprintf("%v://%v/%v.git", protocol, host, name)
+}
+
 func ensureRepository(host string, name string, path string) error {
 	repositoyPath := filepath.Join(path, name)
 	fmt.Println("Ensuring repository:", name, "from host:", host, "on path:", path)
 	if utils.VerifyPath(repositoyPath) {
 		updateRepository(host, name, path)
 	} else {
-		urls := []string{
-			fmt.Sprintf("ssh://git@%v/%v.git", host, name),
-			fmt.Sprintf("https://%v/%v.git", host, name),
+		protocols := []string{
+			"ssh",
+			"https",
 		}
 		options := &git.CloneOptions{
 			SingleBranch: true,
@@ -46,9 +54,9 @@ func ensureRepository(host string, name string, path string) error {
 			Tags:         git.NoTags,
 		}
 		var err error
-		for _, url := range urls {
-			fmt.Println("Trying to clone repo from:", url)
-			options.URL = url
+		for _, protocol := range protocols {
+			fmt.Println("Trying to clone repo with:", protocol)
+			options.URL = templateUrl(protocol, host, name)
 			_, err = git.PlainClone(repositoyPath, false, options)
 			if err == nil {
 				fmt.Println("Repo cloned using git")

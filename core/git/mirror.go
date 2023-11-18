@@ -10,42 +10,55 @@ import (
 	"source.cyberpi.de/go/teminel/utils"
 )
 
-const bareDirectory = "/tmp/teminel/bare"
-const workingDirectory = "/tmp/teminel/working"
-
 var repositoryMatcher = regexp.MustCompile(`^\/((.+?)\.git).*$`)
 
-func Run() error {
-	err := utils.EnsureDirectories(bareDirectory)
+type Config struct {
+	Port             int
+	BareDirectory    string
+	workingDirectory string
+	GitProtocols     []string
+	GitBranches      []string
+}
+
+func Run(config *Config) error {
+	err := utils.EnsureDirectories(config.BareDirectory)
 	if err != nil {
 		return err
 	}
-	config := gitkit.Config{
-		Dir:        bareDirectory,
+	mirrorConfig := gitkit.Config{
+		Dir:        config.BareDirectory,
 		AutoCreate: true,
 	}
-	mirror := gitkit.New(config)
-	if err := mirror.Setup(); err != nil {
+	server := gitkit.New(mirrorConfig)
+	if err := server.Setup(); err != nil {
 		return err
 	}
-	loader := &Loader{
-		mirror: mirror,
+	loader := &loader{
+		server: server,
 	}
 	http.Handle("/", loader)
 
-	return http.ListenAndServe(fmt.Sprintf(":%v", 9980), nil)
+	return http.ListenAndServe(fmt.Sprintf(":%v", config.Port), nil)
 }
 
-type Loader struct {
-	mirror *gitkit.Server
+type loader struct {
+	server           *gitkit.Server
+	target           string
+	bareDirectory    string
+	workingDirectory string
 }
 
-func (cache *Loader) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
+func (repository *loader) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	if request.Method == http.MethodGet {
 		matches := repositoryMatcher.FindStringSubmatch(request.URL.String())
-		if err := load.CloneBare("github.com", matches[2], bareDirectory, workingDirectory); err != nil {
+		if err := load.CloneBare(
+			repository.target,
+			matches[2],
+			repository.bareDirectory,
+			repository.workingDirectory,
+		); err != nil {
 			fmt.Println(err)
 		}
 	}
-	cache.mirror.ServeHTTP(writer, request)
+	repository.server.ServeHTTP(writer, request)
 }
