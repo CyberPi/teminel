@@ -17,7 +17,6 @@ func main() {
 				panic(err)
 			}
 			return
-
 		case "proxy":
 			if err := proxy.Run(&proxy.Default, 8080); err != nil {
 				panic(err)
