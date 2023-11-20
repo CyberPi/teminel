@@ -11,9 +11,9 @@ import (
 	"source.cyberpi.de/go/teminel/utils"
 )
 
-func CloneBare(host string, name string, path string, cache string) error {
+func CloneBare(protocols []string, host string, name string, path string, cache string, versions []string, archive string) error {
 	workingPath := filepath.Join(cache, name)
-	ensureRepository(host, name, cache)
+	ensureRepository(protocols, host, name, cache, versions, archive)
 
 	bareRepository := name + ".git"
 	barePath := filepath.Join(path, bareRepository)
@@ -30,24 +30,20 @@ func CloneBare(host string, name string, path string, cache string) error {
 	return err
 }
 
-func templateUrl(protocol string, host string, name string) string {
+func selectUrlTemplate(protocol string) string {
 	switch protocol {
 	case "ssh":
-		return fmt.Sprintf("%v://git@%v/%v.git", protocol, host, name)
+		return protocol + "://git@%v/%v.git"
 	}
-	return fmt.Sprintf("%v://%v/%v.git", protocol, host, name)
+	return protocol + "://%v/%v.git"
 }
 
-func ensureRepository(host string, name string, path string) error {
+func ensureRepository(protocols []string, host string, name string, path string, versions []string, archive string) error {
 	repositoyPath := filepath.Join(path, name)
 	fmt.Println("Ensuring repository:", name, "from host:", host, "on path:", path)
 	if utils.VerifyPath(repositoyPath) {
-		updateRepository(host, name, path)
+		updateRepository(host, name, path, versions, archive)
 	} else {
-		protocols := []string{
-			"ssh",
-			"https",
-		}
 		options := &git.CloneOptions{
 			SingleBranch: true,
 			Depth:        1,
@@ -56,7 +52,7 @@ func ensureRepository(host string, name string, path string) error {
 		var err error
 		for _, protocol := range protocols {
 			fmt.Println("Trying to clone repo with:", protocol)
-			options.URL = templateUrl(protocol, host, name)
+			options.URL = fmt.Sprintf(selectUrlTemplate(protocol), host, name)
 			_, err = git.PlainClone(repositoyPath, false, options)
 			if err == nil {
 				fmt.Println("Repo cloned using git")
@@ -65,13 +61,13 @@ func ensureRepository(host string, name string, path string) error {
 		}
 		if err != nil {
 			fmt.Println("Unable to clone repo using git:", err)
-			ensureTarballRepository(host, name, path)
+			ensureTarballRepository(host, name, path, versions, archive)
 		}
 	}
 	return nil
 }
 
-func updateRepository(host string, name string, path string) error {
+func updateRepository(host string, name string, path string, versions []string, archive string) error {
 	workingPath := filepath.Join(path, name)
 	repository, err := openOrInit(workingPath)
 	remotes, err := repository.Remotes()
@@ -93,19 +89,14 @@ func updateRepository(host string, name string, path string) error {
 			return nil
 		}
 	} else {
-		ensureTarballRepository(host, name, path)
+		ensureTarballRepository(host, name, path, versions, archive)
 	}
 	return nil
 }
 
-func ensureTarballRepository(host string, name string, path string) error {
-	branches := []string{
-		"main",
-		"master",
-		"develop",
-	}
-	for _, branch := range branches {
-		url := fmt.Sprintf("https://%v/%v/archive/refs/heads/%v.tar.gz", host, name, branch)
+func ensureTarballRepository(host string, name string, path string, versions []string, archive string) error {
+	for _, version := range versions {
+		url := fmt.Sprintf("https://%v/%v/%v/%v.tar.gz", host, name, archive, version)
 		workingPath := filepath.Join(path, name)
 		err := LoadTarball(url, workingPath)
 		if err != nil {

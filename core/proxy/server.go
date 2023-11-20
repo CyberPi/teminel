@@ -9,29 +9,34 @@ import (
 	"source.cyberpi.de/go/teminel/utils/auth"
 )
 
-type Config struct {
+type Proxy struct {
 	Target *url.URL
-	Port   int
 	Auth   *auth.Basic
+	server *httputil.ReverseProxy
 }
 
-func Run(config *Config) error {
-	server := httputil.NewSingleHostReverseProxy(config.Target)
+func Run(proxy *Proxy, port int) error {
+	server := httputil.NewSingleHostReverseProxy(proxy.Target)
+	proxy.server = server
 
-	if config.Auth != nil {
-		http.HandleFunc("/", WithBasicAuth(server, config.Auth))
+	if proxy.Auth != nil {
+		http.HandleFunc("/", proxy.ForwardWithBasicAuth())
 	} else {
-		http.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
-			server.ServeHTTP(writer, request)
-		})
+		http.HandleFunc("/", proxy.Forward())
 	}
 
-	return http.ListenAndServe(fmt.Sprintf(":%v", config.Port), nil)
+	return http.ListenAndServe(fmt.Sprintf(":%v", port), nil)
 }
 
-func WithBasicAuth(server *httputil.ReverseProxy, basicAuth *auth.Basic) func(http.ResponseWriter, *http.Request) {
+func (proxy *Proxy) ForwardWithBasicAuth() func(http.ResponseWriter, *http.Request) {
 	return func(writer http.ResponseWriter, request *http.Request) {
-		request.Header.Add("Authorization", basicAuth.FormatHeader())
-		server.ServeHTTP(writer, request)
+		request.Header.Add("Authorization", proxy.Auth.FormatHeader())
+		proxy.server.ServeHTTP(writer, request)
+	}
+}
+
+func (proxy *Proxy) Forward() func(http.ResponseWriter, *http.Request) {
+	return func(writer http.ResponseWriter, request *http.Request) {
+		proxy.server.ServeHTTP(writer, request)
 	}
 }
