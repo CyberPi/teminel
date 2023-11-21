@@ -11,9 +11,9 @@ import (
 	"source.cyberpi.de/go/teminel/utils"
 )
 
-func CloneBare(protocols []string, host string, name string, path string, cache string, versions []string, archive string) error {
+func EnsureBareRepository(protocols []string, host string, name string, path string, cache string, versions []string, archive string) error {
 	workingPath := filepath.Join(cache, name)
-	ensureRepository(protocols, host, name, cache, versions, archive)
+	EnsureRepository(protocols, host, name, cache, versions, archive)
 
 	bareRepository := name + ".git"
 	barePath := filepath.Join(path, bareRepository)
@@ -30,15 +30,7 @@ func CloneBare(protocols []string, host string, name string, path string, cache 
 	return err
 }
 
-func selectUrlTemplate(protocol string) string {
-	switch protocol {
-	case "ssh":
-		return protocol + "://git@%v/%v.git"
-	}
-	return protocol + "://%v/%v.git"
-}
-
-func ensureRepository(protocols []string, host string, name string, path string, versions []string, archive string) error {
+func EnsureRepository(protocols []string, host string, name string, path string, versions []string, archive string) error {
 	repositoyPath := filepath.Join(path, name)
 	fmt.Println("Ensuring repository:", name, "from host:", host, "on path:", path)
 	if utils.VerifyPath(repositoyPath) {
@@ -65,6 +57,14 @@ func ensureRepository(protocols []string, host string, name string, path string,
 		}
 	}
 	return nil
+}
+
+func selectUrlTemplate(protocol string) string {
+	switch protocol {
+	case "ssh":
+		return protocol + "://git@%v/%v.git"
+	}
+	return protocol + "://%v/%v.git"
 }
 
 func updateRepository(host string, name string, path string, versions []string, archive string) error {

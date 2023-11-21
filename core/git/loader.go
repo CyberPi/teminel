@@ -21,7 +21,7 @@ type Loader struct {
 func (repository *Loader) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	if request.Method == http.MethodGet {
 		matches := repositoryMatcher.FindStringSubmatch(request.URL.String())
-		if err := load.CloneBare(
+		if err := load.EnsureBareRepository(
 			repository.Protocols,
 			repository.Target,
 			matches[2],
