@@ -39,6 +39,10 @@ func (tmux *Plugin) Install(path string) error {
 
 var pluginMatcher = regexp.MustCompile(`(PLUGIN ["']([\w\/-]+?)["'])|(REPO ["']([\w\/-]+?)["'])`)
 
+// set -g @plugin 'tmux-plugins/tmux-sensible'
+var tpmPluginRepoMatcher = regexp.MustCompile(`^set -g @plugin_repo ["']?([\w/-]+?)["']?$`)
+var tpmPluginMatcher = regexp.MustCompile(`^set -g @plugin ["']?([\w/-]+?)["']?$`)
+
 func ParsePlugin(line string) *Plugin {
 	match := pluginMatcher.FindStringSubmatch(line)
 	if match != nil {
