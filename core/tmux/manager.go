@@ -28,21 +28,3 @@ func Run() error {
 	}
 	return nil
 }
-
-func SelectConfig() (string, error) {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return homeDir, err
-	}
-	possibilities := []string{
-		".tmux.conf",
-		".config/tmux/tmux.conf",
-	}
-	for _, possibility := range possibilities {
-		toCheck := filepath.Join(homeDir, possibility)
-		if utils.VerifyPath(toCheck) {
-			return toCheck, nil
-		}
-	}
-	return homeDir, fmt.Errorf("No possible configuration found")
-}
