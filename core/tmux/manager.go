@@ -1,11 +1,7 @@
 package tmux
 
 import (
-	"fmt"
 	"os"
-	"path/filepath"
-
-	"source.cyberpi.de/go/teminel/utils"
 )
 
 func Run() error {

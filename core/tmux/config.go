@@ -68,7 +68,6 @@ func (tmux *Config) Install() error {
 		return err
 	}
 	for _, plugin := range tmux.plugins {
-
 		load.EnsureRepository(
 			[]string{"ssh", "https", "http"},
 			plugin.source,
