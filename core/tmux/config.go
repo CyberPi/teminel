@@ -4,14 +4,23 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
+	"regexp"
 
 	"source.cyberpi.de/go/teminel/exec"
+	"source.cyberpi.de/go/teminel/load"
+	"source.cyberpi.de/go/teminel/utils"
 )
 
 type Config struct {
 	path    string
 	plugins []*Plugin
+}
+
+type Plugin struct {
+	source string
+	name   string
 }
 
 func (tmux *Config) Report() {
@@ -21,6 +30,8 @@ func (tmux *Config) Report() {
 	}
 }
 
+var tpmPluginMatcher = regexp.MustCompile(`^set -g @(plugin(_source)) ["']?([\w/-]+?)["']?$`)
+
 func (tmux *Config) Read(path string) error {
 	tmux.path = filepath.Dir(path)
 	file, err := os.Open(path)
@@ -29,10 +40,20 @@ func (tmux *Config) Read(path string) error {
 	}
 	defer file.Close()
 	scanner := bufio.NewScanner(file)
+	target := "github.com"
 	for scanner.Scan() {
-		toAppend := ParsePlugin(scanner.Text())
-		if toAppend != nil {
-			tmux.plugins = append(tmux.plugins, toAppend)
+		line := scanner.Text()
+		match := tpmPluginMatcher.FindStringSubmatch(line)
+		if match != nil {
+			switch match[1] {
+			case "plugin_domain":
+				target = match[3]
+			default:
+				tmux.plugins = append(tmux.plugins, &Plugin{
+					source: target,
+					name:   match[3],
+				})
+			}
 		}
 	}
 	return nil
@@ -47,14 +68,22 @@ func (tmux *Config) Install() error {
 		return err
 	}
 	for _, plugin := range tmux.plugins {
-		plugin.Install(path)
+
+		load.EnsureRepository(
+			[]string{"ssh", "https", "http"},
+			plugin.source,
+			plugin.name,
+			path,
+			[]string{"main", "master", "develop"},
+			"archive/refs/heads",
+		)
 	}
 	return nil
 }
 
 func (tmux *Config) Load() error {
 	for _, plugin := range tmux.plugins {
-		glob := fmt.Sprintf("%v/plugins/%v/*.tmux", tmux.path, plugin.Name())
+		glob := fmt.Sprintf("%v/plugins/%v/*.tmux", tmux.path, path.Base(plugin.name))
 		toLoad, err := filepath.Glob(glob)
 		if err != nil {
 			return err

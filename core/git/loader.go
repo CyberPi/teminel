@@ -9,26 +9,19 @@ import (
 )
 
 type Loader struct {
-	Target           string
+	Source           *load.GitSource
 	BareDirectory    string
 	WorkingDirectory string
-	Protocols        []string
-	Versions         []string
-	Archive          string
 	server           *gitkit.Server
 }
 
 func (repository *Loader) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	if request.Method == http.MethodGet {
 		matches := repositoryMatcher.FindStringSubmatch(request.URL.String())
-		if err := load.EnsureBareRepository(
-			repository.Protocols,
-			repository.Target,
+		if err := repository.Source.EnsureBareRepository(
 			matches[2],
 			repository.BareDirectory,
 			repository.WorkingDirectory,
-			repository.Versions,
-			repository.Archive,
 		); err != nil {
 			fmt.Println(err)
 		}
