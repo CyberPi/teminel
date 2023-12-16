@@ -6,21 +6,12 @@ import (
 
 func Run() error {
 	_, isTmuxSession := os.LookupEnv("TMUX")
-	configFile, err := SelectConfig()
-	if err != nil {
-		return err
-	}
-	config := &Config{}
-	err = config.Read(configFile)
-	if err != nil {
-		return err
-	}
-	err = config.Install()
+	err := Default.Install()
 	if err != nil {
 		return err
 	}
 	if isTmuxSession {
-		return config.Load()
+		return Default.Load()
 	}
 	return nil
 }
