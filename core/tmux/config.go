@@ -14,13 +14,14 @@ import (
 )
 
 type Config struct {
+	Source  *load.GitSource
 	path    string
 	plugins []*Plugin
 }
 
 type Plugin struct {
-	source string
-	name   string
+	host string
+	name string
 }
 
 func (tmux *Config) Report() {
@@ -30,7 +31,7 @@ func (tmux *Config) Report() {
 	}
 }
 
-var tpmPluginMatcher = regexp.MustCompile(`^set -g @(plugin(_source)) ["']?([\w/-]+?)["']?$`)
+var tpmPluginMatcher = regexp.MustCompile(`^set -g @(plugin(_host)?) ["']?([\w/-]+?)["']?$`)
 
 func (tmux *Config) Read(path string) error {
 	tmux.path = filepath.Dir(path)
@@ -40,18 +41,18 @@ func (tmux *Config) Read(path string) error {
 	}
 	defer file.Close()
 	scanner := bufio.NewScanner(file)
-	target := "github.com"
+	host := tmux.Source.Archive.Host
 	for scanner.Scan() {
 		line := scanner.Text()
 		match := tpmPluginMatcher.FindStringSubmatch(line)
 		if match != nil {
 			switch match[1] {
-			case "plugin_domain":
-				target = match[3]
+			case "plugin_host":
+				host = match[3]
 			default:
 				tmux.plugins = append(tmux.plugins, &Plugin{
-					source: target,
-					name:   match[3],
+					host: host,
+					name: match[3],
 				})
 			}
 		}
@@ -67,15 +68,10 @@ func (tmux *Config) Install() error {
 	} else if err != nil {
 		return err
 	}
+
 	for _, plugin := range tmux.plugins {
-		load.EnsureRepository(
-			[]string{"ssh", "https", "http"},
-			plugin.source,
-			plugin.name,
-			path,
-			[]string{"main", "master", "develop"},
-			"archive/refs/heads",
-		)
+		tmux.Source.Archive.Host = plugin.host
+		tmux.Source.EnsureRepository(plugin.name, path)
 	}
 	return nil
 }
