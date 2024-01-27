@@ -18,63 +18,59 @@ import (
 	"source.cyberpi.de/go/teminel/utils/auth"
 )
 
-var Version = "0.0.1"
-
-// Proxy defines the Proxy handler see NewProx()
 type Proxy struct {
 	Target       *url.URL
 	Credentials  *auth.Basic
 	reverseProxy *httputil.ReverseProxy
 }
 
-// handle requests
-func (proxy *Proxy) handle(w http.ResponseWriter, r *http.Request) {
+// forward requests
+func (proxy *Proxy) forward(writer http.ResponseWriter, request *http.Request) {
 	start := time.Now()
-	proxy.reverseProxy.ServeHTTP(w, r)
+	proxy.reverseProxy.ServeHTTP(writer, request)
 	end := time.Now()
 
-	fmt.Println("Info:", r.Host,
-		"Method:", r.Method,
-		"Path:", r.URL.Path,
+	fmt.Println("Info:", request.Host,
+		"Method:", request.Method,
+		"Path:", request.URL.Path,
 		"Time:", end.Format(time.RFC3339),
 		"Latency:", end.Sub(start),
 	)
 }
 
-// basicAuth
-func (proxy *Proxy) basicAuth(h http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+func (proxy *Proxy) authorize(handler http.HandlerFunc) http.HandlerFunc {
+	return func(writer http.ResponseWriter, request *http.Request) {
 		if proxy.Credentials == nil {
-			h.ServeHTTP(w, r)
+			handler.ServeHTTP(writer, request)
 			return
 		}
 
-		w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
+		writer.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
 
-		s := strings.SplitN(r.Header.Get("Authorization"), " ", 2)
-		if len(s) != 2 {
-			http.Error(w, "Not authorized", 401)
+		parts := strings.SplitN(request.Header.Get("Authorization"), " ", 2)
+		if len(parts) != 2 {
+			http.Error(writer, "Not authorized", 401)
 			return
 		}
 
-		b, err := base64.StdEncoding.DecodeString(s[1])
+		encoder, err := base64.StdEncoding.DecodeString(parts[1])
 		if err != nil {
-			http.Error(w, err.Error(), 401)
+			http.Error(writer, err.Error(), 401)
 			return
 		}
 
-		pair := strings.SplitN(string(b), ":", 2)
+		pair := strings.SplitN(string(encoder), ":", 2)
 		if len(pair) != 2 {
-			http.Error(w, "Not authorized", 401)
+			http.Error(writer, "Not authorized", 401)
 			return
 		}
 
 		if pair[0] != proxy.Credentials.Name || pair[1] != proxy.Credentials.Password {
-			http.Error(w, "Not authorized", 401)
+			http.Error(writer, "Not authorized", 401)
 			return
 		}
 
-		h.ServeHTTP(w, r)
+		handler.ServeHTTP(writer, request)
 	}
 }
 
@@ -105,13 +101,7 @@ func main() {
 	tlsPath := flag.String("tls", tlsPathEnv, "tls config file path.")
 	insecure := flag.Bool("insecure", insecureEnv, "Skip backend tls verify.")
 
-	version := flag.Bool("version", false, "Display version.")
 	flag.Parse()
-
-	if *version {
-		fmt.Println("Version:", Version)
-		os.Exit(1)
-	}
 
 	fmt.Println("Info", "Starting reverse proxy",
 		"port", *port,
@@ -145,7 +135,7 @@ func main() {
 	}
 
 	// server
-	mux.HandleFunc("/", use(proxy.handle, proxy.basicAuth))
+	mux.HandleFunc("/", use(proxy.forward, proxy.authorize))
 
 	srv := &http.Server{
 		Addr:    *ip + ":" + *port,
