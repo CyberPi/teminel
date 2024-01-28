@@ -2,7 +2,9 @@ package proxy
 
 import (
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
+	"os"
 )
 
 // for curl testing see https://unix.stackexchange.com/questions/208437/how-to-convert-ssl-ciphers-to-curl-format
@@ -47,7 +49,7 @@ var (
 	}
 )
 
-type TLSConfig struct {
+type tlsConfig struct {
 	Min     string   `yaml:"min" json:"min"`
 	Max     string   `yaml:"max" json:"max"`
 	Curves  []string `yaml:"curves" json:"curves"`
@@ -56,8 +58,8 @@ type TLSConfig struct {
 	Cert    string   `yaml:"cert" json:"cert"`
 }
 
-func NewTLSConfig() *TLSConfig {
-	return &TLSConfig{
+func newTlsConfig() *tlsConfig {
+	return &tlsConfig{
 		Min: "TLS10",
 		Max: "TLS12",
 		Curves: []string{
@@ -74,7 +76,23 @@ func NewTLSConfig() *TLSConfig {
 	}
 }
 
-func (config *TLSConfig) report() {
+func loadTLSConfig(path string) (*tlsConfig, error) {
+	if len(path) == 0 {
+		return nil, nil
+	}
+	config := newTlsConfig()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(data, config)
+	if err != nil {
+		return nil, err
+	}
+	return config, nil
+}
+
+func (config *tlsConfig) report() {
 	fmt.Println("Info: Setting MIN TLS version",
 		"TLSVersion:", config.Min,
 	)
@@ -91,7 +109,7 @@ func (config *TLSConfig) report() {
 	)
 }
 
-func (config *TLSConfig) ToServerConfig() *tls.Config {
+func (config *tlsConfig) toServerConfig() *tls.Config {
 	curves := make([]tls.CurveID, len(config.Curves))
 	for _, curveName := range config.Curves {
 		curves = append(curves, tlsCurves[curveName])
