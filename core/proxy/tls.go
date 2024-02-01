@@ -7,8 +7,6 @@ import (
 	"os"
 )
 
-// for curl testing see https://unix.stackexchange.com/questions/208437/how-to-convert-ssl-ciphers-to-curl-format
-
 var (
 	tlsVersions = map[string]uint16{
 		"TLS10": tls.VersionTLS10,
@@ -49,7 +47,7 @@ var (
 	}
 )
 
-type tlsConfig struct {
+type readableTlsConfig struct {
 	Min     string   `yaml:"min" json:"min"`
 	Max     string   `yaml:"max" json:"max"`
 	Curves  []string `yaml:"curves" json:"curves"`
@@ -58,22 +56,54 @@ type tlsConfig struct {
 	Cert    string   `yaml:"cert" json:"cert"`
 }
 
+type tlsConfig struct {
+	Key    string
+	Cert   string
+	Config *tls.Config
+}
+
 func newTlsConfig() *tlsConfig {
 	return &tlsConfig{
-		Min: "TLS10",
-		Max: "TLS12",
-		Curves: []string{
-			"P521",
-			"P384",
-			"P256",
-		},
-		Ciphers: []string{
-			"ECDHE_RSA_WITH_AES_256_GCM_SHA384",
-			"ECDHE_RSA_WITH_AES_256_CBC_SHA",
-			"RSA_WITH_AES_256_GCM_SHA384",
-			"RSA_WITH_AES_256_CBC_SHA",
+		Config: &tls.Config{
+			MinVersion: tls.VersionTLS10,
+			MaxVersion: tls.VersionTLS12,
+			CurvePreferences: []tls.CurveID{
+				tls.CurveP256,
+				tls.CurveP384,
+				tls.CurveP521,
+			},
+			CipherSuites: []uint16{
+				tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+				tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
+				tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
+				tls.TLS_RSA_WITH_AES_256_CBC_SHA,
+			},
 		},
 	}
+}
+
+func Unmarshal(data []byte, value *tlsConfig) error {
+	var readable readableTlsConfig
+	err := json.Unmarshal(data, &readable)
+	if err != nil {
+		return err
+	}
+	curves := make([]tls.CurveID, len(readable.Curves))
+	for _, curveName := range readable.Curves {
+		curves = append(curves, tlsCurves[curveName])
+	}
+	ciphers := make([]uint16, len(readable.Ciphers))
+	for _, cipherName := range readable.Ciphers {
+		ciphers = append(ciphers, tlsCiphers[cipherName])
+	}
+	value.Config = &tls.Config{
+		MinVersion:               tlsVersions[readable.Min],
+		MaxVersion:               tlsVersions[readable.Max],
+		PreferServerCipherSuites: true,
+		CurvePreferences:         curves,
+		CipherSuites:             ciphers,
+	}
+	return err
 }
 
 func loadTLSConfig(path string) (*tlsConfig, error) {
@@ -94,35 +124,15 @@ func loadTLSConfig(path string) (*tlsConfig, error) {
 
 func (config *tlsConfig) report() {
 	fmt.Println("Info: Setting MIN TLS version",
-		"TLSVersion:", config.Min,
+		"TLSVersion:", config.Config.MinVersion,
 	)
 	fmt.Println("Info: Setting MAX TLS version",
-		"TLSVersionID:", config.Max,
+		"TLSVersionID:", config.Config.MaxVersion,
 	)
-
 	fmt.Println("Info: Setting Curve Preferences",
-		"Curves:", config.Curves,
+		"Curves:", config.Config.CurvePreferences,
 	)
-
 	fmt.Println("Info: Setting Ciphers",
-		"Ciphers:", config.Ciphers,
+		"Ciphers:", config.Config.CipherSuites,
 	)
-}
-
-func (config *tlsConfig) toServerConfig() *tls.Config {
-	curves := make([]tls.CurveID, len(config.Curves))
-	for _, curveName := range config.Curves {
-		curves = append(curves, tlsCurves[curveName])
-	}
-	ciphers := make([]uint16, len(config.Ciphers))
-	for _, cipherName := range config.Ciphers {
-		ciphers = append(ciphers, tlsCiphers[cipherName])
-	}
-	return &tls.Config{
-		MinVersion:               tlsVersions[config.Min],
-		MaxVersion:               tlsVersions[config.Max],
-		PreferServerCipherSuites: true,
-		CurvePreferences:         curves,
-		CipherSuites:             ciphers,
-	}
 }

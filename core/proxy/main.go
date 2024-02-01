@@ -11,22 +11,26 @@ import (
 )
 
 func main() {
+	user := &auth.Basic{
+		Name:     utils.EnsureEnv("USERNAME", ""),
+		Password: utils.EnsureEnv("PASSWORD", ""),
+	}
+	user.Name = *flag.String("username", user.Name, "BasicAuth username to secure Proxy.")
+	user.Password = *flag.String("password", user.Password, "BasicAuth password to secure Proxy.")
+	if user.Name == "" || user.Password == "" {
+		user = nil
+	}
+
+	hostEnv := utils.EnsureEnv("host", "0.0.0.0:80")
+	host := *flag.String("host", hostEnv, "Server IP address to bind to.")
+
 	backendEnv := utils.EnsureEnv("BACKEND", "http://github.com:80")
-	usernameEnv := utils.EnsureEnv("USERNAME", "")
-	passwordEnv := utils.EnsureEnv("PASSWORD", "")
-	portEnv := utils.EnsureEnv("PORT", "80")
-	ipEnv := utils.EnsureEnv("IP", "0.0.0.0")
-	insecureEnv, _ := strconv.ParseBool(utils.EnsureEnv("INSECURE", "false"))
-	tlsPathEnv := utils.EnsureEnv("TEMINEL_TLS", "")
-
-	ip := flag.String("ip", ipEnv, "Server IP address to bind to.")
-	port := flag.String("port", portEnv, "Server port.")
 	backend := flag.String("backend", backendEnv, "backend server.")
-	username := flag.String("username", usernameEnv, "BasicAuth username to secure Proxy.")
-	password := flag.String("password", passwordEnv, "BasicAuth password to secure Proxy.")
 
+	tlsPathEnv := utils.EnsureEnv("TEMINEL_TLS", "")
 	tlsPath := flag.String("tls", tlsPathEnv, "tls config file path.")
-	insecure := flag.Bool("insecure", insecureEnv, "Skip backend tls verify.")
+
+	insecure := *flag.Bool("insecure", false, "Skip backend tls verify.")
 
 	flag.Parse()
 
@@ -42,12 +46,12 @@ func main() {
 
 	proxy := &Proxy{
 		Target:       targetUrl,
-		Credentials:  auth.NewBasic(*username, *password),
-		ReverseProxy: newReverseProxy(targetUrl, *insecure),
+		Credentials:  user,
+		ReverseProxy: newReverseProxy(targetUrl, insecure),
 		TLSConfig:    tlsConfig,
 	}
 
-	err = proxy.ListenAndServe(*ip + ":" + *port)
+	err = proxy.ListenAndServe(host)
 	if err != nil {
 		panic(err)
 	}
