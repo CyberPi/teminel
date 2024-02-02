@@ -1,7 +1,7 @@
 package main
 
 import (
-	"flag"
+	"os"
 
 	"source.cyberpi.de/go/teminel/core/git"
 	"source.cyberpi.de/go/teminel/core/proxy"
@@ -9,18 +9,16 @@ import (
 )
 
 func main() {
-	flag.Parse()
-	if len(flag.Args()) == 1 {
-		switch flag.Args()[0] {
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
 		case "git":
 			if err := git.Run(&git.Default, 8080); err != nil {
 				panic(err)
 			}
 			return
 		case "proxy":
-			if err := proxy.Run(&proxy.Default, 8080); err != nil {
-				panic(err)
-			}
+			os.Args = os.Args[1:]
+			proxy.Main()
 			return
 		}
 	}

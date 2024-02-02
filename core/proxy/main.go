@@ -4,44 +4,54 @@ import (
 	"flag"
 	"fmt"
 	"net/url"
-	"strconv"
 
+	"source.cyberpi.de/go/teminel/core/proxy/tls"
 	"source.cyberpi.de/go/teminel/utils"
 	"source.cyberpi.de/go/teminel/utils/auth"
 )
 
-func main() {
-	user := &auth.Basic{
-		Name:     utils.EnsureEnv("USERNAME", ""),
-		Password: utils.EnsureEnv("PASSWORD", ""),
-	}
-	user.Name = *flag.String("username", user.Name, "BasicAuth username to secure Proxy.")
-	user.Password = *flag.String("password", user.Password, "BasicAuth password to secure Proxy.")
-	if user.Name == "" || user.Password == "" {
-		user = nil
-	}
+func Main() {
+	userName := utils.EnsureEnv("USERNAME", "")
+	flag.StringVar(&userName, "username", userName, "BasicAuth username to secure Proxy.")
+	userPassword := utils.EnsureEnv("PASSWORD", "")
+	flag.StringVar(&userPassword, "password", userPassword, "BasicAuth password to secure Proxy.")
 
-	hostEnv := utils.EnsureEnv("host", "0.0.0.0:80")
-	host := *flag.String("host", hostEnv, "Server IP address to bind to.")
+	host := utils.EnsureEnv("TEMINEL_HOST", "0.0.0.0:8080")
+	flag.StringVar(&host, "host", host, "Server IP address to bind to.")
 
-	backendEnv := utils.EnsureEnv("BACKEND", "http://github.com:80")
-	backend := flag.String("backend", backendEnv, "backend server.")
+	backend := utils.EnsureEnv("TEMINEL_BACKEND", "https://github.com:443")
+	flag.StringVar(&backend, "backend", backend, "backend server.")
 
-	tlsPathEnv := utils.EnsureEnv("TEMINEL_TLS", "")
-	tlsPath := flag.String("tls", tlsPathEnv, "tls config file path.")
+	tlsPath := utils.EnsureEnv("TEMINEL_TLS", "")
+	flag.StringVar(&tlsPath, "tls", tlsPath, "tls config file path.")
 
-	insecure := *flag.Bool("insecure", false, "Skip backend tls verify.")
+	insecure := false
+	flag.BoolVar(&insecure, "insecure", insecure, "Skip backend tls verify.")
+
+	authenticate := false
+	flag.BoolVar(&authenticate, "auth", authenticate, "Authenticate at the backend only")
 
 	flag.Parse()
 
-	targetUrl, err := url.Parse(*backend)
+	var user *auth.Basic
+	if userName != "" && userPassword != "" {
+		user = &auth.Basic{
+			Name:     userName,
+			Password: userPassword,
+		}
+	}
+
+	targetUrl, err := url.Parse(backend)
 	if err != nil {
 		panic(fmt.Sprintln("Error: Unable to parse URL:", err))
 	}
 
-	tlsConfig, err := loadTLSConfig(*tlsPath)
-	if err != nil {
-		panic(err)
+	var tlsConfig *tls.Config
+	if len(tlsPath) == 0 {
+		tlsConfig, err = tls.LoadJsonConfig(tlsPath)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	proxy := &Proxy{
@@ -49,6 +59,7 @@ func main() {
 		Credentials:  user,
 		ReverseProxy: newReverseProxy(targetUrl, insecure),
 		TLSConfig:    tlsConfig,
+		Authenticate: authenticate,
 	}
 
 	err = proxy.ListenAndServe(host)

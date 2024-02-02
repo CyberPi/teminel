@@ -1,4 +1,4 @@
-package proxy
+package tls
 
 import (
 	"crypto/tls"
@@ -47,7 +47,7 @@ var (
 	}
 )
 
-type readableTlsConfig struct {
+type readableConfig struct {
 	Min     string   `yaml:"min" json:"min"`
 	Max     string   `yaml:"max" json:"max"`
 	Curves  []string `yaml:"curves" json:"curves"`
@@ -56,15 +56,15 @@ type readableTlsConfig struct {
 	Cert    string   `yaml:"cert" json:"cert"`
 }
 
-type tlsConfig struct {
-	Key    string
-	Cert   string
-	Config *tls.Config
+type Config struct {
+	Key      string
+	Cert     string
+	Standard *tls.Config
 }
 
-func newTlsConfig() *tlsConfig {
-	return &tlsConfig{
-		Config: &tls.Config{
+func NewConfig() *Config {
+	return &Config{
+		Standard: &tls.Config{
 			MinVersion: tls.VersionTLS10,
 			MaxVersion: tls.VersionTLS12,
 			CurvePreferences: []tls.CurveID{
@@ -82,9 +82,9 @@ func newTlsConfig() *tlsConfig {
 	}
 }
 
-func Unmarshal(data []byte, value *tlsConfig) error {
-	var readable readableTlsConfig
-	err := json.Unmarshal(data, &readable)
+func Unmarshal(data []byte, value *Config, unmarshal func([]byte, any) error) error {
+	var readable readableConfig
+	err := unmarshal(data, &readable)
 	if err != nil {
 		return err
 	}
@@ -96,7 +96,7 @@ func Unmarshal(data []byte, value *tlsConfig) error {
 	for _, cipherName := range readable.Ciphers {
 		ciphers = append(ciphers, tlsCiphers[cipherName])
 	}
-	value.Config = &tls.Config{
+	value.Standard = &tls.Config{
 		MinVersion:               tlsVersions[readable.Min],
 		MaxVersion:               tlsVersions[readable.Max],
 		PreferServerCipherSuites: true,
@@ -106,33 +106,33 @@ func Unmarshal(data []byte, value *tlsConfig) error {
 	return err
 }
 
-func loadTLSConfig(path string) (*tlsConfig, error) {
+func LoadJsonConfig(path string) (*Config, error) {
 	if len(path) == 0 {
 		return nil, nil
 	}
-	config := newTlsConfig()
+	config := NewConfig()
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
-	err = json.Unmarshal(data, config)
+	err = Unmarshal(data, config, json.Unmarshal)
 	if err != nil {
 		return nil, err
 	}
 	return config, nil
 }
 
-func (config *tlsConfig) report() {
+func (config *Config) Report() {
 	fmt.Println("Info: Setting MIN TLS version",
-		"TLSVersion:", config.Config.MinVersion,
+		"TLSVersion:", config.Standard.MinVersion,
 	)
 	fmt.Println("Info: Setting MAX TLS version",
-		"TLSVersionID:", config.Config.MaxVersion,
+		"TLSVersionID:", config.Standard.MaxVersion,
 	)
 	fmt.Println("Info: Setting Curve Preferences",
-		"Curves:", config.Config.CurvePreferences,
+		"Curves:", config.Standard.CurvePreferences,
 	)
 	fmt.Println("Info: Setting Ciphers",
-		"Ciphers:", config.Config.CipherSuites,
+		"Ciphers:", config.Standard.CipherSuites,
 	)
 }
