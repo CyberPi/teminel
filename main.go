@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"source.cyberpi.de/go/teminel/core/git"
@@ -9,6 +10,7 @@ import (
 )
 
 func main() {
+	fmt.Println("Starting teminel")
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
 		case "git":

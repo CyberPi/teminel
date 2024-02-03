@@ -2,6 +2,7 @@ package git
 
 import (
 	"flag"
+	"fmt"
 	"net/http"
 	"regexp"
 
@@ -37,6 +38,6 @@ func main() {
 	}
 	loader.server = server
 	http.Handle("/", &loader)
-
+	fmt.Println("Git mirror proxy started at:", host)
 	panic(http.ListenAndServe(host, nil))
 }
