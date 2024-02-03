@@ -3,10 +3,13 @@ package git
 import (
 	"fmt"
 	"net/http"
+	"regexp"
 
 	"github.com/sosedoff/gitkit"
 	"source.cyberpi.de/go/teminel/load"
 )
+
+var repositoryMatcher = regexp.MustCompile(`^\/((.+?)\.git).*$`)
 
 type Loader struct {
 	Source           *load.GitSource
@@ -18,12 +21,16 @@ type Loader struct {
 func (repository *Loader) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	if request.Method == http.MethodGet {
 		matches := repositoryMatcher.FindStringSubmatch(request.URL.String())
-		if err := repository.Source.EnsureBareRepository(
-			matches[2],
-			repository.BareDirectory,
-			repository.WorkingDirectory,
-		); err != nil {
-			fmt.Println(err)
+		if len(matches) >= 3 {
+			if err := repository.Source.EnsureBareRepository(
+				matches[2],
+				repository.BareDirectory,
+				repository.WorkingDirectory,
+			); err != nil {
+				fmt.Println(err)
+			}
+		} else {
+			writer.Write([]byte("Unable to handle request"))
 		}
 	}
 	repository.server.ServeHTTP(writer, request)

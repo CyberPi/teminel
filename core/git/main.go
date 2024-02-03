@@ -4,13 +4,10 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
-	"regexp"
 
 	"github.com/sosedoff/gitkit"
 	"source.cyberpi.de/go/teminel/utils"
 )
-
-var repositoryMatcher = regexp.MustCompile(`^\/((.+?)\.git).*$`)
 
 func Main() {
 	main()
