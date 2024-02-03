@@ -11,6 +11,10 @@ import (
 )
 
 func Main() {
+	main()
+}
+
+func main() {
 	userName := utils.EnsureEnv("USERNAME", "")
 	flag.StringVar(&userName, "username", userName, "BasicAuth username to secure Proxy.")
 	userPassword := utils.EnsureEnv("PASSWORD", "")

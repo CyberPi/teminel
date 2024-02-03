@@ -11,6 +11,6 @@ var Default Loader = Loader{
 		},
 		Protocols: []string{"ssh", "https", "http"},
 	},
-	BareDirectory:    "/tmp/teminel/bare",
-	WorkingDirectory: "/tmp/teminel/working",
+	BareDirectory:    "/var/lib/teminel/bare",
+	WorkingDirectory: "/var/lib/teminel/working",
 }

@@ -1,7 +1,7 @@
 package git
 
 import (
-	"fmt"
+	"flag"
 	"net/http"
 	"regexp"
 
@@ -11,10 +11,21 @@ import (
 
 var repositoryMatcher = regexp.MustCompile(`^\/((.+?)\.git).*$`)
 
-func Run(loader *Loader, port int) error {
+func Main() {
+	main()
+}
+
+func main() {
+	host := utils.EnsureEnv("TEMINEL_HOST", "0.0.0.0:8080")
+	flag.StringVar(&host, "host", host, "Server IP address to bind to.")
+
+	flag.Parse()
+
+	loader := Default
+
 	err := utils.EnsureDirectories(loader.BareDirectory)
 	if err != nil {
-		return err
+		panic(err)
 	}
 	mirrorConfig := gitkit.Config{
 		Dir:        loader.BareDirectory,
@@ -22,10 +33,10 @@ func Run(loader *Loader, port int) error {
 	}
 	server := gitkit.New(mirrorConfig)
 	if err := server.Setup(); err != nil {
-		return err
+		panic(err)
 	}
 	loader.server = server
-	http.Handle("/", loader)
+	http.Handle("/", &loader)
 
-	return http.ListenAndServe(fmt.Sprintf(":%v", port), nil)
+	panic(http.ListenAndServe(host, nil))
 }
