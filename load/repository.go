@@ -12,9 +12,10 @@ import (
 )
 
 type ArchiveSource struct {
-	Host     string
-	Versions []string
-	Archive  string
+	Host        string
+	Versions    []string
+	Archive     string
+	UseBaseName bool
 }
 
 type GitSource struct {
@@ -23,18 +24,17 @@ type GitSource struct {
 }
 
 func (source *GitSource) EnsureBareRepository(name string, path string, cache string) error {
-	workingPath := filepath.Join(cache, name)
 	err := source.EnsureRepository(name, cache)
 	if err != nil {
 		return err
 	}
 	bareRepository := name + ".git"
-	barePath := filepath.Join(path, bareRepository)
+	barePath := source.Archive.FormatWorkingPath(path, bareRepository)
 	if utils.VerifyPath(barePath) {
 		os.RemoveAll(barePath)
 	}
 	options := &git.CloneOptions{
-		URL:          workingPath,
+		URL:          source.Archive.FormatWorkingPath(name, cache),
 		SingleBranch: true,
 		Depth:        1,
 		Tags:         git.NoTags,
@@ -44,9 +44,9 @@ func (source *GitSource) EnsureBareRepository(name string, path string, cache st
 }
 
 func (source *GitSource) EnsureRepository(name string, path string) error {
-	repositoyPath := filepath.Join(path, name)
-	fmt.Println("Ensuring repository:", name, "from host:", source.Archive.Host, "on path:", path)
-	if utils.VerifyPath(repositoyPath) {
+	workingPath := source.Archive.FormatWorkingPath(name, path)
+	fmt.Println("Ensuring repository:", name, "from host:", source.Archive.Host, "on path:", workingPath)
+	if utils.VerifyPath(workingPath) {
 		fmt.Println("Updating repository:", name)
 		source.Archive.updateRepository(name, path)
 	} else {
@@ -59,7 +59,7 @@ func (source *GitSource) EnsureRepository(name string, path string) error {
 		for _, protocol := range source.Protocols {
 			fmt.Println("Trying to clone repo with:", protocol)
 			options.URL = fmt.Sprintf(selectUrlTemplate(protocol), source.Archive.Host, name)
-			_, err = git.PlainClone(repositoyPath, false, options)
+			_, err = git.PlainClone(workingPath, false, options)
 			if err == nil {
 				fmt.Println("Repo clone successful using:", protocol)
 				break
@@ -82,7 +82,7 @@ func selectUrlTemplate(protocol string) string {
 }
 
 func (source *ArchiveSource) updateRepository(name string, path string) error {
-	workingPath := filepath.Join(path, name)
+	workingPath := source.FormatWorkingPath(name, path)
 	repository, err := openOrInit(workingPath)
 	remotes, err := repository.Remotes()
 	if err != nil {
@@ -111,7 +111,7 @@ func (source *ArchiveSource) updateRepository(name string, path string) error {
 func (source *ArchiveSource) ensureTarballRepository(name string, path string) error {
 	for _, version := range source.Versions {
 		url := fmt.Sprintf("https://%v/%v/%v/%v.tar.gz", source.Host, name, source.Archive, version)
-		workingPath := filepath.Join(path, name)
+		workingPath := source.FormatWorkingPath(name, path)
 		err := LoadTarball(url, workingPath)
 		if err != nil {
 			fmt.Println("Tarball failed to load:", err)
@@ -128,6 +128,14 @@ func (source *ArchiveSource) ensureTarballRepository(name string, path string) e
 		break
 	}
 	return nil
+}
+
+func (source *ArchiveSource) FormatWorkingPath(name string, path string) string {
+	if source.UseBaseName {
+		return filepath.Join(path, filepath.Base(name))
+	} else {
+		return filepath.Join(path, name)
+	}
 }
 
 func openOrInit(path string) (*git.Repository, error) {

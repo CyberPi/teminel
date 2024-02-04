@@ -71,7 +71,7 @@ func (tmux *Config) Install() error {
 func (tmux *Config) Load() error {
 	for _, plugin := range tmux.plugins {
 		fmt.Println("Start plugin:", plugin.name)
-		glob := fmt.Sprintf("%v/%v/*.tmux", tmux.path, plugin.name)
+		glob := fmt.Sprintf("%v/%v/*.tmux", tmux.path, filepath.Base(plugin.name))
 		toLoad, err := filepath.Glob(glob)
 		if err != nil {
 			return err

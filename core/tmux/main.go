@@ -34,9 +34,10 @@ func main() {
 	config := Config{
 		Source: &load.GitSource{
 			Archive: &load.ArchiveSource{
-				Host:     backend,
-				Versions: versions,
-				Archive:  archive,
+				Host:        backend,
+				Versions:    versions,
+				Archive:     archive,
+				UseBaseName: true,
 			},
 			Protocols: protocols,
 		},
