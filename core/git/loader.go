@@ -3,7 +3,6 @@ package git
 import (
 	"fmt"
 	"net/http"
-	"path"
 	"regexp"
 
 	"github.com/sosedoff/gitkit"
@@ -16,7 +15,6 @@ type Loader struct {
 	Source           *load.GitSource
 	BareDirectory    string
 	WorkingDirectory string
-	HomeDirectory    string
 	server           *gitkit.Server
 }
 
@@ -27,8 +25,8 @@ func (repository *Loader) ServeHTTP(writer http.ResponseWriter, request *http.Re
 		if len(matches) >= 3 {
 			if err := repository.Source.EnsureBareRepository(
 				matches[2],
-				path.Join(repository.HomeDirectory, repository.BareDirectory),
-				path.Join(repository.HomeDirectory, repository.WorkingDirectory),
+				repository.BareDirectory,
+				repository.WorkingDirectory,
 			); err != nil {
 				fmt.Println(err)
 			}

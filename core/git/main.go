@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"path/filepath"
 
 	"github.com/sosedoff/gitkit"
 	extFlag "source.cyberpi.de/go/teminel/flag"
@@ -49,9 +50,8 @@ func main() {
 			},
 			Protocols: protocols,
 		},
-		HomeDirectory:    home,
-		BareDirectory:    bare,
-		WorkingDirectory: working,
+		BareDirectory:    filepath.Join(home, bare),
+		WorkingDirectory: filepath.Join(home, working),
 	}
 
 	err := utils.EnsureDirectories(loader.BareDirectory)
