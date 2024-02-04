@@ -29,6 +29,10 @@ func main() {
 	var protocols extFlag.MultiFlag
 	flag.Var(&protocols, "protocol", "Protocols to use to clone git repo")
 	protocols.Default("ssh", "https", "http")
+
+	install := false
+	flag.BoolVar(&install, "install", install, "Runs the installation of plufins")
+
 	flag.Parse()
 
 	config := Config{
@@ -46,9 +50,11 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	err = config.Install()
-	if err != nil {
-		panic(err)
+	if install {
+		err = config.Install()
+		if err != nil {
+			panic(err)
+		}
 	}
 	_, isTmuxSession := os.LookupEnv("TMUX")
 	if isTmuxSession {
