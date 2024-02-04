@@ -27,7 +27,6 @@ func LoadTarball(url string, path string) error {
 		return err
 	}
 	defer gzipReader.Close()
-	fmt.Println("Untaring tarball")
 	if err := Untar(gzipReader, path); err != nil {
 		return err
 	}
@@ -52,7 +51,6 @@ func Untar(archive io.Reader, path string) error {
 			return err
 		}
 		itemPath := filepath.Join(path, header.Name[len(root):])
-		fmt.Println("Found item:", itemPath, "with type flag:", header.Typeflag, "and mode:", header.Mode)
 		switch header.Typeflag {
 		case tar.TypeDir:
 			if err := UntarDir(itemPath, header); err != nil {
@@ -83,12 +81,10 @@ func SeekRoot(reader *tar.Reader) (string, error) {
 }
 
 func UntarDir(path string, header *tar.Header) error {
-	fmt.Println("Creating folder:", path)
 	return os.MkdirAll(path, os.FileMode(header.Mode))
 }
 
 func UntarFile(path string, reader *tar.Reader, header *tar.Header) error {
-	fmt.Println("Creating file:", path)
 	file, err := os.Create(path)
 	defer file.Close()
 	if err != nil {

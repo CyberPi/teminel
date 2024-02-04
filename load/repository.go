@@ -28,7 +28,6 @@ func (source *GitSource) EnsureBareRepository(name string, path string, cache st
 	if err != nil {
 		return err
 	}
-
 	bareRepository := name + ".git"
 	barePath := filepath.Join(path, bareRepository)
 	if utils.VerifyPath(barePath) {
@@ -48,6 +47,7 @@ func (source *GitSource) EnsureRepository(name string, path string) error {
 	repositoyPath := filepath.Join(path, name)
 	fmt.Println("Ensuring repository:", name, "from host:", source.Archive.Host, "on path:", path)
 	if utils.VerifyPath(repositoyPath) {
+		fmt.Println("Updating repository:", name)
 		source.Archive.updateRepository(name, path)
 	} else {
 		options := &git.CloneOptions{
@@ -61,7 +61,7 @@ func (source *GitSource) EnsureRepository(name string, path string) error {
 			options.URL = fmt.Sprintf(selectUrlTemplate(protocol), source.Archive.Host, name)
 			_, err = git.PlainClone(repositoyPath, false, options)
 			if err == nil {
-				fmt.Println("Repo cloned using git")
+				fmt.Println("Repo clone successful using:", protocol)
 				break
 			}
 		}

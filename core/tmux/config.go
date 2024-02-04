@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
 	"regexp"
 
@@ -71,7 +70,8 @@ func (tmux *Config) Install() error {
 
 func (tmux *Config) Load() error {
 	for _, plugin := range tmux.plugins {
-		glob := fmt.Sprintf("%v/plugins/%v/*.tmux", tmux.path, path.Base(plugin.name))
+		fmt.Println("Start plugin:", plugin.name)
+		glob := fmt.Sprintf("%v/%v/*.tmux", tmux.path, plugin.name)
 		toLoad, err := filepath.Glob(glob)
 		if err != nil {
 			return err

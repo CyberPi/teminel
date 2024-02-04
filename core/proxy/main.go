@@ -24,7 +24,7 @@ func main() {
 	flag.StringVar(&host, "host", host, "Server IP address to bind to.")
 
 	backend := utils.EnsureEnv("TEMINEL_BACKEND", "https://github.com:443")
-	flag.StringVar(&backend, "backend", backend, "backend server.")
+	flag.StringVar(&backend, "backend", backend, "Backend server.")
 
 	tlsPath := utils.EnsureEnv("TEMINEL_TLS", "")
 	flag.StringVar(&tlsPath, "tls", tlsPath, "tls config file path.")
