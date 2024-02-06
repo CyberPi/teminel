@@ -32,7 +32,7 @@ func main() {
 	flag.Var(&protocols, "protocol", "Protocols to use to clone git repo")
 	protocols.Default("ssh", "https", "http")
 
-	home := utils.EnsureEnv("TEMINEL_HOME", "/var/lib/teminel")
+	home := utils.EnsureEnv("TEMINEL_HOME", "var/lib/teminel")
 	flag.StringVar(&home, "home", home, "Main dir to store teminel caches and config.")
 	bare := utils.EnsureEnv("TEMINEL_BARE", "bare")
 	flag.StringVar(&bare, "bare", bare, "Sub dir to store teminel bare repo data.")
@@ -57,16 +57,16 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	mirrorConfig := gitkit.Config{
-		Dir:        loader.BareDirectory,
-		AutoCreate: true,
-	}
-	server := gitkit.New(mirrorConfig)
-	if err := server.Setup(); err != nil {
+	mirror := gitkit.New(
+		gitkit.Config{
+			Dir:        loader.BareDirectory,
+			AutoCreate: true,
+		},
+	)
+	if err := mirror.Setup(); err != nil {
 		panic(err)
 	}
-	handler := utils.Use(server.ServeHTTP, loader.preload)
-	http.HandleFunc("/", handler)
+	http.HandleFunc("/", utils.Use(mirror.ServeHTTP, loader.preload))
 	fmt.Println("Git mirror proxy started at:", host)
 	panic(http.ListenAndServe(host, nil))
 }
