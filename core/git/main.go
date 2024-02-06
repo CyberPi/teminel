@@ -53,7 +53,6 @@ func main() {
 		BareDirectory:    filepath.Join(home, bare),
 		WorkingDirectory: filepath.Join(home, working),
 	}
-
 	err := utils.EnsureDirectories(loader.BareDirectory)
 	if err != nil {
 		panic(err)
@@ -66,8 +65,8 @@ func main() {
 	if err := server.Setup(); err != nil {
 		panic(err)
 	}
-	loader.server = server
-	http.Handle("/", &loader)
+	handler := utils.Use(server.ServeHTTP, loader.preload)
+	http.HandleFunc("/", handler)
 	fmt.Println("Git mirror proxy started at:", host)
 	panic(http.ListenAndServe(host, nil))
 }

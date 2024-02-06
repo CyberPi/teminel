@@ -28,8 +28,7 @@ func (source *GitSource) EnsureBareRepository(name string, path string, cache st
 	if err != nil {
 		return err
 	}
-	bareRepository := name + ".git"
-	barePath := source.Archive.FormatWorkingPath(path, bareRepository)
+	barePath := source.Archive.FormatWorkingPath(name+".git", path)
 	if utils.VerifyPath(barePath) {
 		os.RemoveAll(barePath)
 	}
