@@ -30,7 +30,11 @@ func main() {
 
 	var protocols extFlag.MultiFlag
 	flag.Var(&protocols, "protocol", "Protocols to use to clone git repo")
-	protocols.Default("ssh", "https", "http")
+	noClone := false
+	flag.BoolVar(&noClone, "no-clone", noClone, "Do not use default git clone protocols")
+	if noClone {
+		protocols.Default("ssh", "https", "http")
+	}
 
 	home := utils.EnsureEnv("TEMINEL_HOME", "var/lib/teminel")
 	flag.StringVar(&home, "home", home, "Main dir to store teminel caches and config.")

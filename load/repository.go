@@ -49,12 +49,13 @@ func (source *GitSource) EnsureRepository(name string, path string) error {
 		fmt.Println("Updating repository:", name)
 		source.Archive.updateRepository(name, path)
 	} else {
+		fmt.Println("Cloning repository:", name)
 		options := &git.CloneOptions{
 			SingleBranch: true,
 			Depth:        1,
 			Tags:         git.NoTags,
 		}
-		var err error
+		err := fmt.Errorf("No protocol was set")
 		for _, protocol := range source.Protocols {
 			fmt.Println("Trying to clone repo with:", protocol)
 			options.URL = fmt.Sprintf(selectUrlTemplate(protocol), source.Archive.Host, name)
