@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/format/config"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"source.cyberpi.de/go/teminel/utils"
 )
@@ -28,12 +30,12 @@ func (source *GitSource) EnsureBareRepository(name string, path string, cache st
 	if err != nil {
 		return err
 	}
-	barePath := source.Archive.FormatWorkingPath(name+".git", path)
+	barePath := source.Archive.formatWorkingPath(name+".git", path)
 	if utils.VerifyPath(barePath) {
 		os.RemoveAll(barePath)
 	}
 	options := &git.CloneOptions{
-		URL:          source.Archive.FormatWorkingPath(name, cache),
+		URL:          source.Archive.formatWorkingPath(name, cache),
 		SingleBranch: true,
 		Depth:        1,
 		Tags:         git.NoTags,
@@ -43,7 +45,7 @@ func (source *GitSource) EnsureBareRepository(name string, path string, cache st
 }
 
 func (source *GitSource) EnsureRepository(name string, path string) error {
-	workingPath := source.Archive.FormatWorkingPath(name, path)
+	workingPath := source.Archive.formatWorkingPath(name, path)
 	fmt.Println("Ensuring repository:", name, "from host:", source.Archive.Host, "on path:", workingPath)
 	if utils.VerifyPath(workingPath) {
 		fmt.Println("Updating repository:", name)
@@ -82,8 +84,8 @@ func selectUrlTemplate(protocol string) string {
 }
 
 func (source *ArchiveSource) updateRepository(name string, path string) error {
-	workingPath := source.FormatWorkingPath(name, path)
-	repository, err := openOrInit(workingPath)
+	workingPath := source.formatWorkingPath(name, path)
+	repository, err := git.PlainOpen(workingPath)
 	remotes, err := repository.Remotes()
 	if err != nil {
 		return nil
@@ -111,13 +113,13 @@ func (source *ArchiveSource) updateRepository(name string, path string) error {
 func (source *ArchiveSource) ensureTarballRepository(name string, path string) error {
 	for _, version := range source.Versions {
 		url := fmt.Sprintf("https://%v/%v/%v/%v.tar.gz", source.Host, name, source.Archive, version)
-		workingPath := source.FormatWorkingPath(name, path)
+		workingPath := source.formatWorkingPath(name, path)
 		err := LoadTarball(url, workingPath)
 		if err != nil {
 			fmt.Println("Tarball failed to load:", err)
 			continue
 		}
-		repository, err := openOrInit(workingPath)
+		repository, err := openOrInit(workingPath, version)
 		if err != nil {
 			return err
 		}
@@ -130,7 +132,7 @@ func (source *ArchiveSource) ensureTarballRepository(name string, path string) e
 	return nil
 }
 
-func (source *ArchiveSource) FormatWorkingPath(name string, path string) string {
+func (source *ArchiveSource) formatWorkingPath(name string, path string) string {
 	if source.UseBaseName {
 		return filepath.Join(path, filepath.Base(name))
 	} else {
@@ -138,11 +140,18 @@ func (source *ArchiveSource) FormatWorkingPath(name string, path string) string 
 	}
 }
 
-func openOrInit(path string) (*git.Repository, error) {
+func openOrInit(path string, branch string) (*git.Repository, error) {
 	if utils.VerifyPath(path + "/.git") {
 		return git.PlainOpen(path)
 	} else {
-		return git.PlainInit(path, false)
+		options := &git.PlainInitOptions{
+			InitOptions: git.InitOptions{
+				DefaultBranch: plumbing.ReferenceName(branch),
+			},
+			Bare:         false,
+			ObjectFormat: config.DefaultObjectFormat,
+		}
+		return git.PlainInitWithOptions(path, options)
 	}
 }
 
