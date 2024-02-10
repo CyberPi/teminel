@@ -18,7 +18,7 @@ type Loader struct {
 
 func (repository *Loader) preload(handler http.HandlerFunc) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
-		fmt.Println("New request:", request.URL.Path, "Method:", request.Method)
+		fmt.Println("New request:", request.Host+request.URL.String(), "Method:", request.Method)
 		if request.Method == http.MethodGet {
 			matches := repositoryMatcher.FindStringSubmatch(request.URL.String())
 			if len(matches) < 2 {
