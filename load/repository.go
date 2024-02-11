@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/format/config"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"source.cyberpi.de/go/teminel/utils"
 )
@@ -120,7 +121,7 @@ func (source *ArchiveSource) ensureTarballRepository(name string, path string) e
 
 			clearGitRepository(workingPath)
 
-			repository, err := openOrInit(workingPath)
+			repository, err := openOrInit(workingPath, version)
 			if err != nil {
 				fmt.Println("Error on opening repo:", err)
 				return err
@@ -132,10 +133,11 @@ func (source *ArchiveSource) ensureTarballRepository(name string, path string) e
 				return err
 			}
 			ref := plumbing.NewBranchReferenceName(version)
+			fmt.Println("Ref:", ref)
 			err = worktree.Checkout(&git.CheckoutOptions{
 				Branch: ref,
 				Force:  true,
-				Create: true,
+				Create: !checkBranchExists(repository, version),
 			})
 			if err != nil {
 				fmt.Println("Error on branch creation:", err)
@@ -171,7 +173,7 @@ func (source *ArchiveSource) formatWorkingPath(name string, path string) string 
 	}
 }
 
-func openOrInit(path string) (*git.Repository, error) {
+func openOrInit(path string, branch string) (*git.Repository, error) {
 	if utils.VerifyPath(path + "/.git") {
 		repository, err := git.PlainOpen(path)
 		if err != nil {
@@ -179,7 +181,25 @@ func openOrInit(path string) (*git.Repository, error) {
 		}
 		return repository, nil
 	} else {
-		return git.PlainInit(path, false)
+		options := &git.PlainInitOptions{
+			InitOptions: git.InitOptions{
+				DefaultBranch: plumbing.NewBranchReferenceName(branch),
+			},
+			Bare:         false,
+			ObjectFormat: config.DefaultObjectFormat,
+		}
+		repository, err := git.PlainInitWithOptions(path, options)
+		if err != nil {
+			return nil, err
+		}
+		worktree, err := repository.Worktree()
+		if err != nil {
+			return nil, err
+		}
+		filename := "README.md"
+		_, _ = worktree.Filesystem.Create(filename)
+		commit(repository)
+		return repository, nil
 	}
 }
 
@@ -220,4 +240,23 @@ func clearGitRepository(repositoryPath string) error {
 		println("Removing:", path, "type:", info.Mode())
 		return os.RemoveAll(path)
 	})
+}
+
+func checkBranchExists(repo *git.Repository, branchName string) bool {
+	branchRefName := plumbing.NewBranchReferenceName(branchName)
+
+	refs, err := repo.References()
+	if err != nil {
+		return false
+	}
+
+	exists := false
+	err = refs.ForEach(func(ref *plumbing.Reference) error {
+		if ref.Name() == branchRefName {
+			exists = true
+		}
+		return nil
+	})
+
+	return exists
 }
