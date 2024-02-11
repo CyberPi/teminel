@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/go-git/go-git/v5/plumbing/format/config"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"source.cyberpi.de/go/teminel/utils"
 )
@@ -112,24 +112,53 @@ func (source *ArchiveSource) updateRepository(name string, path string) error {
 
 func (source *ArchiveSource) ensureTarballRepository(name string, path string) error {
 	for _, version := range source.Versions {
-		fmt.Println("Ensuring tarball repository:", name, "version:", version)
 		url := fmt.Sprintf("https://%v/%v/%v/%v.tar.gz", source.Host, name, source.Archive, version)
-		workingPath := source.formatWorkingPath(name, path)
-		err := LoadTarball(url, workingPath)
-		if err != nil {
-			fmt.Println("Tarball failed to load:", err)
-			continue
+		fmt.Print("Ensuring tarball repository:", name)
+		if utils.RequestShouldSucceed(url) {
+			fmt.Println(" version:", version, "found")
+			workingPath := source.formatWorkingPath(name, path)
+
+			clearGitRepository(workingPath)
+
+			repository, err := openOrInit(workingPath)
+			if err != nil {
+				fmt.Println("Error on opening repo:", err)
+				return err
+			}
+
+			worktree, err := repository.Worktree()
+			if err != nil {
+				fmt.Println("Error on getting worktree:", err)
+				return err
+			}
+			ref := plumbing.NewBranchReferenceName(version)
+			err = worktree.Checkout(&git.CheckoutOptions{
+				Branch: ref,
+				Force:  true,
+				Create: true,
+			})
+			if err != nil {
+				fmt.Println("Error on branch creation:", err)
+				return err
+			}
+
+			err = LoadTarball(url, workingPath)
+			if err != nil {
+				fmt.Println("Tarball failed to load:", err)
+				return err
+			}
+
+			if err != nil {
+				fmt.Println("Failed to open or init repository:", err)
+				return err
+			}
+			err = commit(repository)
+			if err != nil {
+				return err
+			}
+		} else {
+			fmt.Println(" version:", version, "not found")
 		}
-		repository, err := openOrInit(workingPath, version)
-		if err != nil {
-			fmt.Println("Failed to open or init repository:", err)
-			return err
-		}
-		err = commit(repository)
-		if err != nil {
-			return err
-		}
-		break
 	}
 	return nil
 }
@@ -142,18 +171,15 @@ func (source *ArchiveSource) formatWorkingPath(name string, path string) string 
 	}
 }
 
-func openOrInit(path string, branch string) (*git.Repository, error) {
+func openOrInit(path string) (*git.Repository, error) {
 	if utils.VerifyPath(path + "/.git") {
-		return git.PlainOpen(path)
-	} else {
-		options := &git.PlainInitOptions{
-			InitOptions: git.InitOptions{
-				DefaultBranch: plumbing.NewBranchReferenceName(branch),
-			},
-			Bare:         false,
-			ObjectFormat: config.DefaultObjectFormat,
+		repository, err := git.PlainOpen(path)
+		if err != nil {
+			return nil, err
 		}
-		return git.PlainInitWithOptions(path, options)
+		return repository, nil
+	} else {
+		return git.PlainInit(path, false)
 	}
 }
 
@@ -181,4 +207,17 @@ func commit(repository *git.Repository) error {
 		}
 	}
 	return nil
+}
+
+func clearGitRepository(repositoryPath string) error {
+	return filepath.Walk(repositoryPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if path == repositoryPath || strings.Contains(path, ".git") {
+			return nil
+		}
+		println("Removing:", path, "type:", info.Mode())
+		return os.RemoveAll(path)
+	})
 }

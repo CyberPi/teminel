@@ -24,7 +24,6 @@ func main() {
 	flag.StringVar(&backend, "backend", backend, "Backend server.")
 	var versions extFlag.MultiFlag
 	flag.Var(&versions, "version", "Array of branches to check for.")
-	versions.Default("main", "master", "develop")
 	archive := utils.EnsureEnv("TEMINEL_ARCHIVE", "archive/refs/heads")
 	flag.StringVar(&archive, "archive", archive, "Path to tar archives")
 
@@ -32,9 +31,6 @@ func main() {
 	flag.Var(&protocols, "protocol", "Protocols to use to clone git repo")
 	noClone := false
 	flag.BoolVar(&noClone, "no-clone", noClone, "Do not use default git clone protocols")
-	if noClone {
-		protocols.Default("ssh", "https", "http")
-	}
 
 	home := utils.EnsureEnv("TEMINEL_HOME", "var/lib/teminel")
 	flag.StringVar(&home, "home", home, "Main dir to store teminel caches and config.")
@@ -44,6 +40,10 @@ func main() {
 	flag.StringVar(&working, "working", working, "Sub dir to store teminel repo data.")
 
 	flag.Parse()
+	versions.Default("main", "master", "develop")
+	if !noClone {
+		protocols.Default("ssh", "https", "http")
+	}
 
 	loader := Loader{
 		Source: &load.GitSource{
