@@ -32,17 +32,11 @@ func (source *GitSource) EnsureBareRepository(name string, path string, cache st
 		return err
 	}
 	barePath := source.Archive.formatWorkingPath(name+".git", path)
+	workingPath := source.Archive.formatWorkingPath(name, cache)
 	if utils.VerifyPath(barePath) {
 		os.RemoveAll(barePath)
 	}
-	options := &git.CloneOptions{
-		URL:          source.Archive.formatWorkingPath(name, cache),
-		SingleBranch: true,
-		Depth:        1,
-		Tags:         git.NoTags,
-	}
-	_, err = git.PlainClone(barePath, true, options)
-	return err
+	return utils.CopyDirectory(filepath.Join(workingPath, ".git"), barePath)
 }
 
 func (source *GitSource) EnsureRepository(name string, path string) error {
@@ -54,9 +48,8 @@ func (source *GitSource) EnsureRepository(name string, path string) error {
 	} else {
 		fmt.Println("Cloning repository:", name)
 		options := &git.CloneOptions{
-			SingleBranch: true,
-			Depth:        1,
-			Tags:         git.NoTags,
+			SingleBranch: false,
+			Tags:         git.AllTags,
 		}
 		err := fmt.Errorf("No protocol was set")
 		for _, protocol := range source.Protocols {
