@@ -69,7 +69,7 @@ func (source *GitSource) EnsureRepository(name string, path string) error {
 		}
 		if err != nil {
 			fmt.Println("Unable to clone repo using git:", err)
-			source.Archive.ensureTarballRepository(name, path)
+			return source.Archive.ensureTarballRepository(name, path)
 		}
 	}
 	return nil
@@ -105,13 +105,14 @@ func (source *ArchiveSource) updateRepository(name string, path string) error {
 			return nil
 		}
 	} else {
-		source.ensureTarballRepository(name, path)
+		return source.ensureTarballRepository(name, path)
 	}
 	return nil
 }
 
 func (source *ArchiveSource) ensureTarballRepository(name string, path string) error {
 	for _, version := range source.Versions {
+		fmt.Println("Ensuring tarball repository:", name, "version:", version)
 		url := fmt.Sprintf("https://%v/%v/%v/%v.tar.gz", source.Host, name, source.Archive, version)
 		workingPath := source.formatWorkingPath(name, path)
 		err := LoadTarball(url, workingPath)
@@ -121,6 +122,7 @@ func (source *ArchiveSource) ensureTarballRepository(name string, path string) e
 		}
 		repository, err := openOrInit(workingPath, version)
 		if err != nil {
+			fmt.Println("Failed to open or init repository:", err)
 			return err
 		}
 		err = commit(repository)
@@ -146,7 +148,7 @@ func openOrInit(path string, branch string) (*git.Repository, error) {
 	} else {
 		options := &git.PlainInitOptions{
 			InitOptions: git.InitOptions{
-				DefaultBranch: plumbing.ReferenceName(branch),
+				DefaultBranch: plumbing.NewBranchReferenceName(branch),
 			},
 			Bare:         false,
 			ObjectFormat: config.DefaultObjectFormat,
